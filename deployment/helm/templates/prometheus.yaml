@@ -18,15 +18,15 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: akri-controller-metrics
+  name: akri-spore-controller-metrics
   namespace: {{ .Release.Namespace }}
   labels: {{- include "akri.labels" . | nindent 4 }}
-    app.kubernetes.io/name: akri-controller
+    app.kubernetes.io/name: akri-spore-controller
     release: prometheus
 spec:
   selector:
     matchLabels: {{- include "akri.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/name: akri-controller
+      app.kubernetes.io/name: akri-spore-controller
   podMetricsEndpoints:
   - port: {{ .Values.prometheus.portName | quote }}
     path: {{ .Values.prometheus.endpoint }}

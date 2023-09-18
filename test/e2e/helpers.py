@@ -30,7 +30,7 @@ def save_akri_logs(prefix):
 
 def check_akri_is_healthy(handlers):
     v1_core = kubernetes.client.CoreV1Api()
-    for component in [f"{h}-discovery" for h in handlers] + ["agent", "controller"]:
+    for component in [f"{h}-discovery" for h in handlers] + ["agent", "spore-controller"]:
         if component == "debugEcho-discovery":
             component = "debug-echo-discovery"
         pods = v1_core.list_namespaced_pod(

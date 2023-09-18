@@ -31,7 +31,7 @@ rbac:
 
 prometheus:
   # enabled defines whether metrics ports are exposed on
-  # the Controller and Agent
+  # the Spore-controller and Agent
   enabled: false
   # endpoint is the path the port exposed for metrics
   endpoint: /metrics
@@ -40,17 +40,17 @@ prometheus:
   # portName is the name of the metrics port
   portName: metrics
 
-controller:
-  # enabled defines whether to apply the Akri Controller
+sporeController:
+  # enabled defines whether to apply the Akri Spore-controller
   enabled: true
   image:
-    # repository is the Akri Controller container reference
-    repository: ghcr.io/project-akri/akri/controller
-    # tag is the Akri Controller container tag
-    # controller.yaml will default to v(AppVersion)[-dev]
+    # repository is the Akri Spore-controller container reference
+    repository: ghcr.io/project-akri/akri/spore-controller
+    # tag is the Akri Spore-controller container tag
+    # spore-controller.yaml will default to v(AppVersion)[-dev]
     # with `-dev` added if `useDevelopmentContainers` is specified
     tag:
-    # pullPolicy is the Akri Controller pull policy
+    # pullPolicy is the Akri Spore-controller pull policy
     pullPolicy: "Always"
   # ensures container doesn't run with unnecessary priviledges
   securityContext:
@@ -60,14 +60,14 @@ controller:
     readOnlyRootFilesystem: true
     capabilities:
       drop: ["ALL"]
-  # onlyOnControlPlane dictates whether the Akri Controller will only run on nodes with 
+  # onlyOnControlPlane dictates whether the Akri Spore-controller will only run on nodes with 
   # the label with (key, value) of ("node-role.kubernetes.io/master", "")
   onlyOnControlPlane: false
-  # allowOnControlPlane dictates whether a toleration will be added to allow to Akri Controller 
+  # allowOnControlPlane dictates whether a toleration will be added to allow to Akri Spore-controller 
   # to run on the control plane node
   allowOnControlPlane: true
-  # nodeSelectors is the array of nodeSelectors used to target nodes for the Akri Controller to run on
-  # This can be set from the helm command line using `--set controller.nodeSelectors.label="value"`
+  # nodeSelectors is the array of nodeSelectors used to target nodes for the Akri Spore-controller to run on
+  # This can be set from the helm command line using `--set spore-controller.nodeSelectors.label="value"`
   nodeSelectors: {}
   resources:
     # memoryRequest defines the minimum amount of RAM that must be available to this Pod
@@ -841,7 +841,7 @@ udev:
 
 # Admission Controllers (Webhooks)
 webhookConfiguration:
-  # enabled defines whether to apply the Akri Admission Controller (Webhook) for Akri Configurations
+  # enabled defines whether to apply the Akri Admission Spore-controller (Webhook) for Akri Configurations
   enabled: true
   # name of the webhook
   name: akri-webhook-configuration

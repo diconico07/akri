@@ -76,8 +76,8 @@ def install_akri(request, distribution_config, pytestconfig, akri_version):
                 "--set",
                 "agent.image.pullPolicy=Never,"
                 f"agent.image.tag={local_tag},"
-                "controller.image.pullPolicy=Never,"
-                f"controller.image.tag={local_tag},"
+                "spore-controller.image.pullPolicy=Never,"
+                f"spore-controller.image.tag={local_tag},"
                 "webhookConfiguration.image.pullPolicy=Never,"
                 f"webhookConfiguration.image.tag={local_tag}",
             ]

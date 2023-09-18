@@ -7,7 +7,7 @@ h2 = { git = 'https://github.com/project-akri/h2', branch = 'patch-authority'}
 members = [
     "shared", 
     "agent", 
-    "controller", 
+    "spore-controller", 
     "samples/brokers/udev-video-broker", 
     "webhooks/validating/configuration",
     "discovery-utils", 

@@ -1,5 +1,5 @@
 [package]
-name = "controller"
+name = "spore-controller"
 version = "0.12.20"
 license = "Apache-2.0"
 authors = ["<bfjelds@microsoft.com>", "<kagold@microsoft.com>"]
