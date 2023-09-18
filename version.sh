@@ -72,6 +72,10 @@ MAJOR=0
 MINOR=0
 PATCH=1
 
+# Get list of Cargo files from workspace Cargo.toml
+CARGO_FILES=$(awk '/members = \[/{flag=1;next}/\]/{flag=0}flag{gsub("\""," ");print $1"/Cargo.toml"}' Cargo.toml)
+# Extract name of packages from Cargo files
+CARGO_LOCK_PROJECTS=$(grep "name =" $CARGO_FILES | awk '{gsub("\"", "");print $3}')
 
 while getopts umnpcs option
 do
@@ -124,7 +128,6 @@ if [ "$CHECK" == "1" ]; then
     echo "    Verified format: $BASEDIR/version.txt"
     fi
 
-    CARGO_FILES="$BASEDIR/shared/Cargo.toml $BASEDIR/agent/Cargo.toml $BASEDIR/controller/Cargo.toml $BASEDIR/samples/brokers/udev-video-broker/Cargo.toml $BASEDIR/webhooks/validating/configuration/Cargo.toml $BASEDIR/discovery-utils/Cargo.toml $BASEDIR/discovery-handlers/debug-echo/Cargo.toml $BASEDIR/discovery-handlers/onvif/Cargo.toml $BASEDIR/discovery-handlers/opcua/Cargo.toml $BASEDIR/discovery-handlers/udev/Cargo.toml $BASEDIR/discovery-handler-modules/debug-echo-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/onvif-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/opcua-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/udev-discovery-handler/Cargo.toml"
     TOML_VERSION_PATTERN="^version"
     TOML_VERSION="\"$(echo $VERSION)\""
     for CARGO_FILE in $CARGO_FILES
@@ -133,7 +136,6 @@ if [ "$CHECK" == "1" ]; then
         if [ "$?" -eq "1" ]; then exit 1; fi
     done
 
-    CARGO_LOCK_PROJECTS="controller akri-shared agent controller webhook-configuration udev-video-broker akri-discovery-utils akri-debug-echo akri-udev akri-onvif akri-opcua debug-echo-discovery-handler onvif-discovery-handler udev-discovery-handler opcua-discovery-handler"
     CARGO_LOCK_VERSION="\"$(echo $VERSION)\""
     for CARGO_LOCK_PROJECT in $CARGO_LOCK_PROJECTS
     do
@@ -183,7 +185,6 @@ then
     fi
     echo "Updating to version: $NEW_VERSION"
 
-    CARGO_FILES="$BASEDIR/shared/Cargo.toml $BASEDIR/agent/Cargo.toml $BASEDIR/controller/Cargo.toml $BASEDIR/samples/brokers/udev-video-broker/Cargo.toml $BASEDIR/webhooks/validating/configuration/Cargo.toml $BASEDIR/discovery-utils/Cargo.toml $BASEDIR/discovery-handlers/debug-echo/Cargo.toml $BASEDIR/discovery-handlers/onvif/Cargo.toml $BASEDIR/discovery-handlers/opcua/Cargo.toml $BASEDIR/discovery-handlers/udev/Cargo.toml $BASEDIR/discovery-handler-modules/debug-echo-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/onvif-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/opcua-discovery-handler/Cargo.toml $BASEDIR/discovery-handler-modules/udev-discovery-handler/Cargo.toml"
     TOML_VERSION_PATTERN="^version = .*"
     TOML_VERSION_LINE="version = \"$NEW_VERSION\""
     for CARGO_FILE in $CARGO_FILES
@@ -192,7 +193,6 @@ then
         if [ "$?" -eq "1" ]; then exit 1; fi
     done
 
-    CARGO_LOCK_PROJECTS="controller akri-shared agent controller webhook-configuration udev-video-broker akri-discovery-utils akri-debug-echo akri-udev akri-onvif akri-opcua debug-echo-discovery-handler onvif-discovery-handler udev-discovery-handler opcua-discovery-handler"
     CARGO_LOCK_VERSION_PATTERN="^version = .*"
     CARGO_LOCK_VERSION_LINE="version = \"$NEW_VERSION\""
     for CARGO_LOCK_PROJECT in $CARGO_LOCK_PROJECTS
