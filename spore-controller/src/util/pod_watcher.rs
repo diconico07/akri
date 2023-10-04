@@ -13,7 +13,7 @@ use async_std::sync::Mutex;
 use futures::{StreamExt, TryStreamExt};
 use k8s_openapi::api::core::v1::{Pod, ServiceSpec};
 use kube::api::Api;
-use kube_runtime::watcher::{watcher, Config, Event};
+use kube_runtime::watcher::{watcher, Event};
 use kube_runtime::WatchStreamExt;
 use log::{error, info, trace};
 use std::{collections::HashMap, sync::Arc};
@@ -129,7 +129,7 @@ impl BrokerPodWatcher {
         let resource = Api::<Pod>::all(kube_interface.get_kube_client());
         let watcher = watcher(
             resource,
-            Config::default().labels(AKRI_CONFIGURATION_LABEL_NAME),
+            kube_runtime::watcher::Config::default().labels(AKRI_CONFIGURATION_LABEL_NAME),
         )
         .default_backoff();
         let mut informer = watcher.boxed();

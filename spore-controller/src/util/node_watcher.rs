@@ -10,7 +10,7 @@ use akri_shared::{
 use futures::{StreamExt, TryStreamExt};
 use k8s_openapi::api::core::v1::{Node, NodeStatus};
 use kube::api::Api;
-use kube_runtime::watcher::{watcher, Config, Event};
+use kube_runtime::watcher::{watcher, Event};
 use kube_runtime::WatchStreamExt;
 use log::{error, info, trace};
 use std::collections::HashMap;
@@ -58,7 +58,7 @@ impl NodeWatcher {
         trace!("watch - enter");
         let kube_interface = k8s::KubeImpl::new().await?;
         let resource = Api::<Node>::all(kube_interface.get_kube_client());
-        let watcher = watcher(resource, Config::default()).default_backoff();
+        let watcher = watcher(resource, Default::default()).default_backoff();
         let mut informer = watcher.boxed();
         let mut first_event = true;
 
