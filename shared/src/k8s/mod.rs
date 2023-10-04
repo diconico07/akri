@@ -1,3 +1,7 @@
+use std::convert::TryFrom;
+
+use crate::akri::spore::Spore;
+
 use super::akri::{
     configuration,
     configuration::{Configuration, ConfigurationList},
@@ -6,10 +10,18 @@ use super::akri::{
     retry::{random_delay, MAX_INSTANCE_UPDATE_TRIES},
     API_NAMESPACE, API_VERSION,
 };
+use anyhow::anyhow;
 use async_trait::async_trait;
+use futures::StreamExt;
 use k8s_openapi::api::batch::v1::Job;
 use k8s_openapi::api::core::v1::{Node, Pod, Service};
-use kube::{api::ObjectList, client::Client};
+use kube::{
+    api::{ObjectList, Patch, PatchParams},
+    client::Client,
+    core::{DynamicObject, GroupVersionKind, ObjectMeta, PartialObjectMetaExt, TypeMeta},
+    discovery::{self, ApiResource},
+    Api, Resource, ResourceExt,
+};
 use mockall::{automock, predicate::*};
 
 pub mod crud;
@@ -147,6 +159,81 @@ pub trait KubeInterface: Send + Sync {
         name: &str,
         namespace: &str,
     ) -> Result<(), anyhow::Error>;
+
+    async fn apply_resource(
+        &self,
+        resource: &DynamicObject,
+        field_manager: &str,
+    ) -> anyhow::Result<()>;
+    async fn delete_resource(&self, resource: &DynamicObject) -> anyhow::Result<()>;
+    async fn add_spore_finalizer(&self, spore: &Spore, finalizer: &str) -> anyhow::Result<()>;
+    async fn remove_spore_finalizer(&self, spore: &Spore, finalizer: &str) -> anyhow::Result<()>;
+    async fn add_instance_finalizer(
+        &self,
+        instance: &Instance,
+        finalizer: &str,
+    ) -> anyhow::Result<()>;
+    async fn remove_instance_finalizer(
+        &self,
+        instance: &Instance,
+        finalizer: &str,
+    ) -> anyhow::Result<()>;
+
+    async fn get_api_resource(&self, type_meta: &TypeMeta) -> anyhow::Result<ApiResource>;
+    fn get_metadata_watcher_resource(
+        &self,
+        dyntype: &ApiResource,
+        watcher_config: kube_runtime::watcher::Config,
+    ) -> futures::stream::BoxStream<
+        'static,
+        Result<
+            kube_runtime::watcher::Event<kube::api::PartialObjectMeta<DynamicObject>>,
+            kube_runtime::watcher::Error,
+        >,
+    >;
+}
+
+#[async_trait]
+pub trait ResourceWithApi: Sized {
+    async fn get_api(&self, kube_client: Client) -> anyhow::Result<Api<Self>>;
+}
+
+#[async_trait]
+impl ResourceWithApi for DynamicObject {
+    async fn get_api(&self, kube_client: Client) -> anyhow::Result<Api<Self>> {
+        let gvk = GroupVersionKind::try_from(self.types.as_ref().unwrap())?;
+        let (ar, _caps) = discovery::pinned_kind(&kube_client, &gvk).await?;
+        Ok(match &self.meta().namespace {
+            None => Api::all_with(kube_client, &ar),
+            Some(ns) => Api::namespaced_with(kube_client, ns.as_str(), &ar),
+        })
+    }
+}
+
+#[async_trait]
+impl ResourceWithApi for Spore {
+    async fn get_api(&self, kube_client: Client) -> anyhow::Result<Api<Self>> {
+        Ok(Api::namespaced(
+            kube_client,
+            self.meta()
+                .namespace
+                .as_ref()
+                .ok_or(anyhow!("No namespace provided for Spore"))?,
+        ))
+    }
+}
+
+#[async_trait]
+impl ResourceWithApi for Instance {
+    async fn get_api(&self, kube_client: Client) -> anyhow::Result<Api<Self>> {
+        Ok(Api::namespaced(
+            kube_client,
+            self.meta()
+                .namespace
+                .as_ref()
+                .ok_or(anyhow!("No namespace provided for Instance"))?,
+        ))
+    }
 }
 
 #[derive(Clone)]
@@ -598,6 +685,107 @@ impl KubeInterface for KubeImpl {
         instance::update_instance(instance_to_update, name, namespace, &self.get_kube_client())
             .await
     }
+
+    async fn apply_resource(
+        &self,
+        resource: &DynamicObject,
+        field_manager: &str,
+    ) -> Result<(), anyhow::Error> {
+        let api = resource.get_api(self.get_kube_client()).await?;
+        let patch = Patch::Apply(resource);
+        api.patch(
+            resource.name_any().as_str(),
+            &PatchParams::apply(field_manager),
+            &patch,
+        )
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_resource(&self, resource: &DynamicObject) -> Result<(), anyhow::Error> {
+        let api = resource.get_api(self.get_kube_client()).await?;
+        api.delete(resource.name_any().as_str(), &Default::default())
+            .await?;
+        Ok(())
+    }
+
+    async fn add_spore_finalizer(&self, spore: &Spore, finalizer: &str) -> anyhow::Result<()> {
+        let api = spore.get_api(self.get_kube_client()).await?;
+        set_finalizers(
+            &api,
+            &spore.name_any(),
+            Some(vec![finalizer.to_string()]),
+            finalizer,
+        )
+        .await
+    }
+    async fn remove_spore_finalizer(&self, spore: &Spore, finalizer: &str) -> anyhow::Result<()> {
+        let api = spore.get_api(self.get_kube_client()).await?;
+        set_finalizers(&api, &spore.name_any(), None, finalizer).await
+    }
+    async fn add_instance_finalizer(
+        &self,
+        instance: &Instance,
+        finalizer: &str,
+    ) -> anyhow::Result<()> {
+        let api = instance.get_api(self.get_kube_client()).await?;
+        set_finalizers(
+            &api,
+            &instance.name_any(),
+            Some(vec![finalizer.to_string()]),
+            finalizer,
+        )
+        .await
+    }
+    async fn remove_instance_finalizer(
+        &self,
+        instance: &Instance,
+        finalizer: &str,
+    ) -> anyhow::Result<()> {
+        let api = instance.get_api(self.get_kube_client()).await?;
+        set_finalizers(&api, &instance.name_any(), None, finalizer).await
+    }
+    async fn get_api_resource(&self, type_meta: &TypeMeta) -> anyhow::Result<ApiResource> {
+        let gvk = GroupVersionKind::try_from(type_meta)?;
+        let (ar, _caps) = discovery::pinned_kind(&self.get_kube_client(), &gvk).await?;
+        Ok(ar)
+    }
+    fn get_metadata_watcher_resource(
+        &self,
+        dyntype: &ApiResource,
+        watcher_config: kube_runtime::watcher::Config,
+    ) -> futures::stream::BoxStream<
+        'static,
+        Result<
+            kube_runtime::watcher::Event<kube::api::PartialObjectMeta<DynamicObject>>,
+            kube_runtime::watcher::Error,
+        >,
+    > {
+        let dyn_api = Api::<DynamicObject>::all_with(self.get_kube_client(), dyntype);
+        kube_runtime::metadata_watcher(dyn_api, watcher_config).boxed()
+    }
+}
+
+async fn set_finalizers<
+    T: Resource<DynamicType = ()> + Clone + serde::de::DeserializeOwned + std::fmt::Debug,
+>(
+    api: &Api<T>,
+    name: &str,
+    finalizers: Option<Vec<String>>,
+    field_manager: &str,
+) -> anyhow::Result<()> {
+    let metadata = ObjectMeta {
+        finalizers,
+        ..Default::default()
+    }
+    .into_request_partial::<T>();
+    api.patch_metadata(
+        name,
+        &PatchParams::apply(field_manager),
+        &Patch::Apply(&metadata),
+    )
+    .await?;
+    Ok(())
 }
 
 /// This deletes an Instance unless it has already been deleted by another node

@@ -1,0 +1,52 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: spores.akri.sh
+spec:
+  group: akri.sh
+  names:
+    categories: []
+    kind: Spore
+    plural: spores
+    shortNames: []
+    singular: spore
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns: []
+      name: v0
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for SporeSpec via `CustomResource`"
+          properties:
+            spec:
+              properties:
+                deviceSpore:
+                  items:
+                    type: object
+                    x-kubernetes-embedded-resource: true
+                    x-kubernetes-preserve-unknown-fields: true
+                  type: array
+                discoverySelector:
+                  properties:
+                    name:
+                      type: string
+                  required:
+                    - name
+                  type: object
+                onceSpore:
+                  items:
+                    type: object
+                    x-kubernetes-embedded-resource: true
+                    x-kubernetes-preserve-unknown-fields: true
+                  type: array
+              required:
+                - discoverySelector
+              type: object
+          required:
+            - spec
+          title: Spore
+          type: object
+      served: true
+      storage: true
+      subresources: {}

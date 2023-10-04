@@ -2,11 +2,14 @@
 extern crate lazy_static;
 mod util;
 
-use akri_shared::akri::{metrics::run_metrics_server, API_NAMESPACE};
+use akri_shared::{
+    akri::{metrics::run_metrics_server, API_NAMESPACE},
+    k8s,
+};
 use async_std::sync::Mutex;
 use prometheus::IntGaugeVec;
 use std::sync::Arc;
-use util::{instance_action, node_watcher, pod_watcher};
+use util::{controller, instance_action, node_watcher, pod_watcher};
 
 /// Length of time to sleep between controller system validation checks
 pub const SYSTEM_CHECK_DELAY_SECS: u64 = 30;
@@ -63,11 +66,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             node_watcher.watch().await.unwrap();
         }
     }));
+
     // Watch for broker Pod state changes
     tasks.push(tokio::spawn({
         async move {
             let mut broker_pod_watcher = pod_watcher::BrokerPodWatcher::new();
             broker_pod_watcher.watch().await.unwrap();
+        }
+    }));
+
+    tasks.push(tokio::spawn({
+        async move {
+            let client = Arc::new(k8s::KubeImpl::new().await.unwrap());
+            let spore_controller = controller::Controller::new(client).await.unwrap();
+            spore_controller.run().await;
         }
     }));
 

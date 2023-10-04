@@ -33,7 +33,7 @@ rules:
   resources: ["nodes"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [{{ .Values.crds.group | quote }}]
-  resources: ["instances"]
+  resources: ["instances", "spores"]
   verbs: ["get", "list", "watch", "update", "patch"]
 - apiGroups: [{{ .Values.crds.group | quote }}]
   resources: ["configurations"]

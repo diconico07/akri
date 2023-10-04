@@ -1,8 +1,5 @@
 /// Akri API Version
 pub const API_VERSION: &str = "v0";
-/// Version for kube:Api::watch
-/// TODO: use kube_runtime::watcher::watcher to avoid managing version
-pub const WATCH_VERSION: &str = "0";
 /// Akri CRD Namespace
 pub const API_NAMESPACE: &str = "akri.sh";
 /// Akri Configuration CRD name
@@ -17,6 +14,7 @@ pub const AKRI_SLOT_ANNOTATION_NAME_PREFIX: &str = "akri.agent.slot-";
 pub mod configuration;
 pub mod instance;
 pub mod metrics;
+pub mod spore;
 
 pub mod retry {
     use rand::random;
