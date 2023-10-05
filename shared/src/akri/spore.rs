@@ -16,7 +16,7 @@ fn arbitrary_json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::sc
     .unwrap()
 }
 
-#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Default)]
 #[kube(
     group = "akri.sh",
     version = "v0",
@@ -36,7 +36,7 @@ pub struct SporeSpec {
     pub once_spore: Option<Vec<DynamicObject>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Default)]
 pub struct SporeDiscoverySelector {
     pub name: String,
 }

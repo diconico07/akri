@@ -1,0 +1,83 @@
+{
+  "apiVersion": "akri.sh/v0",
+  "kind": "Spore",
+  "metadata": {
+    "name": "spore-a",
+    "namespace": "spore-a-namespace",
+    "uid": "e9fbe880-99da-47c1-bea3-5398f21ee747"
+  },
+  "spec": {
+    "discoverySelector": {
+      "name": "config-a"
+    },
+    "onceSpore": [
+      {
+        "apiVersion": "/v1",
+        "kind": "Service",
+        "metadata": {
+          "name": "service-spore-a"
+        },
+        "spec": {
+          "type": "ClusterIP",
+          "ports": [
+            {
+              "name": "akri-foo-service",
+              "port": 6052,
+              "protocol": "TCP",
+              "targetPort": 6052
+            }
+          ],
+          "selector": "{{ LABEL_SELECTOR }}"
+        }
+      }
+    ],
+    "deviceSpore": [
+      {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": {
+          "name": "service-spore-a-instance-{{INSTANCE_NAME}}"
+        },
+        "spec": {
+          "type": "ClusterIP",
+          "ports": [
+            {
+              "name": "akri-foo-service",
+              "port": 6052,
+              "protocol": "TCP",
+              "targetPort": 6052
+            }
+          ],
+          "selector": "{{LABEL_SELECTOR}}"
+        }
+      },
+      {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "metadata": {
+          "name": "spore-a-{{INSTANCE_NAME}}-pod"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "nginx:stable-alpine",
+              "name": "service-spore-a-pod-container",
+              "resources": {
+                "limits": {
+                  "akri.sh/{{INSTANCE_NAME}}": "1",
+                  "cpu": "29m",
+                  "memory": "30Mi"
+                },
+                "requests": {
+                  "akri.sh/{{INSTANCE_NAME}}": "1",
+                  "cpu": "10m",
+                  "memory": "10Mi"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

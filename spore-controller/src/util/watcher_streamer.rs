@@ -26,24 +26,22 @@ impl<T: Stream + Unpin> Stream for WatcherStreamer<T> {
     type Item = T::Item;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        loop {
-            let terminated = match self.receiver.poll_recv(cx) {
-                Poll::Ready(Some(item)) => {
-                    self.triggers.push(item);
-                    false
+        let terminated = match self.receiver.poll_recv(cx) {
+            Poll::Ready(Some(item)) => {
+                self.triggers.push(item);
+                false
+            }
+            Poll::Ready(None) => true,
+            Poll::Pending => false,
+        };
+        match ready!(self.triggers.poll_next_unpin(cx)) {
+            Some(item) => Poll::Ready(Some(item)),
+            None => {
+                // Only terminate stream if all streams are terminated and receive channel is closed
+                if terminated {
+                    return Poll::Ready(None);
                 }
-                Poll::Ready(None) => true,
-                Poll::Pending => false,
-            };
-            match ready!(self.triggers.poll_next_unpin(cx)) {
-                Some(item) => return Poll::Ready(Some(item)),
-                None => {
-                    // Only terminate stream if all streams are terminated and receive channel is closed
-                    if terminated {
-                        return Poll::Ready(None);
-                    }
-                    return Poll::Pending;
-                }
+                Poll::Pending
             }
         }
     }

@@ -79,9 +79,9 @@ impl Context {
         let ar = self.kube_interface.get_api_resource(new_type).await?;
         let new_trigger: TriggerStream = trigger_owners(
             self.kube_interface
-                .get_metadata_watcher_resource(&ar, Default::default())
+                .get_metadata_watcher_resource(&ar, watcher::Config::default())
                 .touched_objects(),
-            Default::default(),
+            (),
             ar,
         )
         .boxed();
@@ -105,7 +105,7 @@ impl Controller {
         let spore_api = Api::<Spore>::all(kube_interface.get_kube_client());
         let self_watcher = trigger_self(
             reflector(writer, watcher(spore_api, Default::default())).applied_objects(),
-            Default::default(),
+            (),
         )
         .boxed();
         trigger_selector.push(self_watcher);
@@ -191,7 +191,7 @@ async fn reconcile(obj: Arc<Spore>, ctx: Arc<Context>) -> Result<Action, Error> 
         .into_iter()
         .filter(|i| {
             i.metadata.owner_references.iter().flatten().any(|o| {
-                ObjectRef::<Configuration>::from_owner_ref(None, &o, Default::default())
+                ObjectRef::<Configuration>::from_owner_ref(None, o, ())
                     .is_some_and(|r| r.name == obj.spec.discovery_selector.name)
             })
         })
@@ -334,7 +334,7 @@ async fn apply_resources(
     resources: impl Iterator<Item = &DynamicObject>,
     owner: &OwnerReference,
     labels: &HashMap<String, String>,
-    namespace: &String,
+    namespace: &str,
 ) -> Result<(), Error> {
     let ki = ctx.kube_interface.clone();
     for resource in resources {
@@ -348,7 +348,7 @@ async fn apply_resources(
         let mut new_resource = render_object(resource, data)?;
         new_resource.owner_references_mut().push(owner.clone());
         new_resource.labels_mut().extend(labels.clone());
-        new_resource.meta_mut().namespace = Some(namespace.clone());
+        new_resource.meta_mut().namespace = Some(namespace.to_string());
         ki.apply_resource(&new_resource, "akri-spore-controller")
             .await?;
     }
@@ -359,12 +359,12 @@ async fn delete_resources(
     ctx: &Context,
     data: &serde_json::Value,
     resources: impl Iterator<Item = &DynamicObject>,
-    namespace: &String,
+    namespace: &str,
 ) -> Result<(), Error> {
     let ki = ctx.kube_interface.clone();
     for resource in resources {
         let mut new_resource = render_object(resource, data)?;
-        new_resource.meta_mut().namespace = Some(namespace.clone());
+        new_resource.meta_mut().namespace = Some(namespace.to_string());
         ki.delete_resource(&new_resource).await?;
     }
     Ok(())
@@ -381,5 +381,278 @@ fn error_policy(object: Arc<Spore>, err: &Error, _ctx: Arc<Context>) -> Action {
             Action::requeue(Duration::from_secs(300))
         }
         Error::Anyhow(_) => Action::requeue(Duration::from_secs(5)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use akri_shared::{
+        akri::instance::{InstanceList, InstanceSpec},
+        k8s::MockKubeInterface,
+        os::file,
+    };
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+    use kube::{
+        core::{ListMeta, PartialObjectMetaExt},
+        discovery::ApiResource,
+    };
+    use tokio::sync::mpsc::Receiver;
+
+    use super::*;
+
+    fn create_type_watcher() -> (Arc<RwLock<TypeWatcher>>, Receiver<TriggerStream>) {
+        let (sender, receiver) = tokio::sync::mpsc::channel(10);
+        let type_watcher = Arc::new(RwLock::new(TypeWatcher {
+            watched: HashSet::new(),
+            watch_sender: sender,
+        }));
+        (type_watcher, receiver)
+    }
+
+    fn setup_mock_register_type(mki: &mut MockKubeInterface) {
+        mki.expect_get_api_resource().returning(|_| {
+            Ok(ApiResource {
+                group: "example.com".to_string(),
+                kind: "Bar".to_string(),
+                plural: "bars".to_string(),
+                version: "v0".to_string(),
+                api_version: "example.com/v0".to_string(),
+            })
+        });
+        mki.expect_get_metadata_watcher_resource()
+            .returning(move |_, _| {
+                futures::stream::once(async {
+                    Ok(watcher::Event::Applied(
+                        kube::core::ObjectMeta {
+                            name: Some("foo".to_string()),
+                            namespace: Some("bar".to_string()),
+                            uid: Some("1234".to_string()),
+                            ..Default::default()
+                        }
+                        .into_response_partial(),
+                    ))
+                })
+                .boxed()
+            });
+    }
+
+    #[tokio::test]
+    async fn test_register_type() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, mut rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        setup_mock_register_type(&mut mki);
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+
+        context
+            .register_type(&TypeMeta {
+                api_version: "example.com/v0".to_string(),
+                kind: "Bar".to_string(),
+            })
+            .await
+            .unwrap();
+        assert!(rec.try_recv().is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_no_instances() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, _rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        mki.expect_get_instances().returning(|| {
+            Ok(InstanceList {
+                metadata: ListMeta::default(),
+                items: Default::default(),
+            })
+        });
+        mki.expect_add_spore_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+        let spore_json = file::read_file_to_string("../test/json/spore-a.json");
+        let spore: Arc<Spore> = Arc::new(serde_json::from_str(&spore_json).unwrap());
+        assert_eq!(
+            reconcile(spore.clone(), context.clone()).await.unwrap(),
+            Action::requeue(Duration::from_secs(300))
+        );
+
+        assert_eq!(
+            context
+                .watched_configurations
+                .read()
+                .await
+                .get(&spore.spec.discovery_selector.name)
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_no_instances_deleted() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, _rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        mki.expect_get_instances().returning(|| {
+            Ok(InstanceList {
+                metadata: ListMeta::default(),
+                items: Default::default(),
+            })
+        });
+        mki.expect_remove_spore_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+        let spore_json = file::read_file_to_string("../test/json/spore-a.json");
+        let mut spore: Spore = serde_json::from_str(&spore_json).unwrap();
+        spore.metadata.deletion_timestamp = Some(Time(Default::default()));
+        let spore = Arc::new(spore);
+
+        context.watched_configurations.write().await.insert(
+            spore.spec.discovery_selector.name.clone(),
+            HashSet::from([ObjectRef::from_obj(spore.as_ref())]),
+        );
+
+        assert_eq!(
+            reconcile(spore.clone(), context.clone()).await.unwrap(),
+            Action::await_change()
+        );
+
+        assert!(context
+            .watched_configurations
+            .read()
+            .await
+            .get(&spore.spec.discovery_selector.name)
+            .is_none());
+    }
+
+    fn setup_get_instances(mki: &mut MockKubeInterface, deleted: bool) {
+        let deletion_timestamp = match deleted {
+            true => Some(Time(Default::default())),
+            false => None,
+        };
+        mki.expect_get_instances().returning(move || {
+            Ok(InstanceList {
+                metadata: ListMeta::default(),
+                items: vec![Instance {
+                    metadata: kube::core::ObjectMeta {
+                        name: Some("instance-a".to_string()),
+                        namespace: Some("not-relevant".to_string()),
+                        uid: Some("5432".to_string()),
+                        owner_references: Some(vec![OwnerReference {
+                            api_version: "akri.sh/v0".to_string(),
+                            kind: "Configuration".to_string(),
+                            name: "config-a".to_string(),
+                            uid: "6789".to_string(),
+                            ..Default::default()
+                        }]),
+                        deletion_timestamp: deletion_timestamp.clone(),
+                        ..Default::default()
+                    },
+                    spec: InstanceSpec {
+                        configuration_name: "config-a".to_string(),
+                        broker_properties: Default::default(),
+                        shared: false,
+                        nodes: Default::default(),
+                        device_usage: Default::default(),
+                    },
+                }],
+            })
+        });
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_instances() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, _rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        setup_get_instances(&mut mki, false);
+        mki.expect_add_spore_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        mki.expect_apply_resource()
+            .times(3)
+            .returning(|_, _| Ok(()));
+        mki.expect_add_instance_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        setup_mock_register_type(&mut mki);
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+        let spore_json = file::read_file_to_string("../test/json/spore-a.json");
+        let spore: Arc<Spore> = Arc::new(serde_json::from_str(&spore_json).unwrap());
+        assert_eq!(
+            reconcile(spore.clone(), context.clone()).await.unwrap(),
+            Action::requeue(Duration::from_secs(300))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_deleted_instances() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, _rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        setup_get_instances(&mut mki, true);
+        mki.expect_add_spore_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        mki.expect_delete_resource().times(3).returning(|_| Ok(()));
+        mki.expect_remove_instance_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+        let spore_json = file::read_file_to_string("../test/json/spore-a.json");
+        let spore: Arc<Spore> = Arc::new(serde_json::from_str(&spore_json).unwrap());
+        assert_eq!(
+            reconcile(spore.clone(), context.clone()).await.unwrap(),
+            Action::requeue(Duration::from_secs(300))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_reconcile_with_instances_deleted() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let (type_watcher, _rec) = create_type_watcher();
+        let mut mki = MockKubeInterface::new();
+        setup_get_instances(&mut mki, false);
+        mki.expect_remove_spore_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        mki.expect_remove_instance_finalizer()
+            .once()
+            .returning(|_, _| Ok(()));
+        let context = Arc::new(Context {
+            watched_configurations: Default::default(),
+            kube_interface: Arc::new(mki),
+            type_watcher,
+        });
+        let spore_json = file::read_file_to_string("../test/json/spore-a.json");
+        let mut spore: Spore = serde_json::from_str(&spore_json).unwrap();
+        spore.metadata.deletion_timestamp = Some(Time(Default::default()));
+        let spore = Arc::new(spore);
+        assert_eq!(
+            reconcile(spore.clone(), context.clone()).await.unwrap(),
+            Action::await_change(),
+        );
     }
 }
