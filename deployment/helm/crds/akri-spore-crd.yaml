@@ -14,20 +14,23 @@ spec:
   scope: Namespaced
   versions:
     - additionalPrinterColumns: []
-      name: v0
+      name: v1
       schema:
         openAPIV3Schema:
           description: "Auto-generated derived type for SporeSpec via `CustomResource`"
           properties:
             spec:
+              description: "This object describe what kubernetes objects to deploy for a given device discovery configuration. It is capable of deploying one-off objects (one set of object that get deployed if there is at least 1 discovered device), or per device instances objects. All deployed objects will be deployed to the Spore's namespace. Objects definition can make use of Liquid templating, for more information about the available variables see **TODO: Insert link to documentation**"
               properties:
                 deviceSpore:
+                  description: "List of full kubernetes objects to deploy for every discovered devices. If a device disappears, the associated objects will be deleted."
                   items:
                     type: object
                     x-kubernetes-embedded-resource: true
                     x-kubernetes-preserve-unknown-fields: true
                   type: array
                 discoverySelector:
+                  description: "Identifies the linked Discovery Configuration, currently it is only possible to link to a single configuration by name."
                   properties:
                     name:
                       type: string
@@ -35,6 +38,7 @@ spec:
                     - name
                   type: object
                 onceSpore:
+                  description: "List of full kubernetes objects to deploy only once when at least a device is discovered, these will get deleted if there are no discovered device left."
                   items:
                     type: object
                     x-kubernetes-embedded-resource: true
@@ -42,6 +46,7 @@ spec:
                   type: array
               required:
                 - discoverySelector
+              title: "Spore: Resource Deployment Configuration"
               type: object
           required:
             - spec
