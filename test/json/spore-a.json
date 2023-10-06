@@ -1,5 +1,5 @@
 {
-  "apiVersion": "akri.sh/v0",
+  "apiVersion": "akri.sh/v1",
   "kind": "Spore",
   "metadata": {
     "name": "spore-a",
