@@ -18,7 +18,7 @@ fn arbitrary_json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::sc
 
 /// # Spore: Resource Deployment Configuration
 /// This object describe what kubernetes objects to deploy for a given device discovery configuration.
-/// It is capable of deploying one-off objects (one set of object that get deployed if there is 
+/// It is capable of deploying one-off objects (one set of object that get deployed if there is
 /// at least 1 discovered device), or per device instances objects.
 /// All deployed objects will be deployed to the Spore's namespace.
 /// Objects definition can make use of Liquid templating, for more information about the available
@@ -29,7 +29,7 @@ fn arbitrary_json_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::sc
     version = "v1",
     kind = "Spore",
     plural = "spores",
-    struct = "Spore",
+    root = "Spore",
     namespaced
 )]
 #[serde(rename_all = "camelCase")]

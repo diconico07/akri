@@ -468,6 +468,7 @@ mod tests {
             Ok(InstanceList {
                 metadata: ListMeta::default(),
                 items: Default::default(),
+                types: TypeMeta::default(),
             })
         });
         mki.expect_add_spore_finalizer()
@@ -506,6 +507,7 @@ mod tests {
             Ok(InstanceList {
                 metadata: ListMeta::default(),
                 items: Default::default(),
+                types: TypeMeta::default(),
             })
         });
         mki.expect_remove_spore_finalizer()
@@ -547,6 +549,7 @@ mod tests {
         mki.expect_get_instances().returning(move || {
             Ok(InstanceList {
                 metadata: ListMeta::default(),
+                types: TypeMeta::default(),
                 items: vec![Instance {
                     metadata: kube::core::ObjectMeta {
                         name: Some("instance-a".to_string()),
