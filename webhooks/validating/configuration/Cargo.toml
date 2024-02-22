@@ -14,8 +14,8 @@ k8s-openapi = { version = "0.21.1", default-features = false, features = ["schem
 openapi = { git = "https://github.com/DazWilkin/openapi-admission-v1", tag = "v1.1.0" }
 openssl = "0.10"
 serde_json = "1.0.61"
+kube = { version = "0.88.1",  features = ["derive", "admission"] }
 
 [dev-dependencies]
 actix-rt = "2.2.0"
-kube = { version = "0.88.1",  features = ["derive"] }
 

@@ -3,8 +3,6 @@ use std::convert::TryFrom;
 use crate::akri::spore::Spore;
 
 use super::akri::{
-    configuration,
-    configuration::{Configuration, ConfigurationList},
     instance,
     instance::{Instance, InstanceList, InstanceSpec},
     retry::{random_delay, MAX_INSTANCE_UPDATE_TRIES},
@@ -135,29 +133,20 @@ pub trait KubeInterface: Send + Sync {
         namespace: &str,
     ) -> Result<(), anyhow::Error>;
 
-    async fn find_configuration(
-        &self,
-        name: &str,
-        namespace: &str,
-    ) -> Result<Configuration, anyhow::Error>;
-    async fn get_configurations(&self) -> Result<ConfigurationList, anyhow::Error>;
-
-    async fn find_instance(&self, name: &str, namespace: &str) -> Result<Instance, anyhow::Error>;
+    async fn find_instance(&self, name: &str) -> Result<Instance, anyhow::Error>;
     async fn get_instances(&self) -> Result<InstanceList, anyhow::Error>;
     async fn create_instance(
         &self,
         instance_to_create: &InstanceSpec,
         name: &str,
-        namespace: &str,
         owner_config_name: &str,
         owner_config_uid: &str,
     ) -> Result<(), anyhow::Error>;
-    async fn delete_instance(&self, name: &str, namespace: &str) -> Result<(), anyhow::Error>;
+    async fn delete_instance(&self, name: &str) -> Result<(), anyhow::Error>;
     async fn update_instance(
         &self,
         instance_to_update: &InstanceSpec,
         name: &str,
-        namespace: &str,
     ) -> Result<(), anyhow::Error>;
 
     async fn apply_resource(
@@ -226,13 +215,7 @@ impl ResourceWithApi for Spore {
 #[async_trait]
 impl ResourceWithApi for Instance {
     async fn get_api(&self, kube_client: Client) -> anyhow::Result<Api<Self>> {
-        Ok(Api::namespaced(
-            kube_client,
-            self.meta()
-                .namespace
-                .as_ref()
-                .ok_or(anyhow!("No namespace provided for Instance"))?,
-        ))
+        Ok(Api::all(kube_client))
     }
 }
 
@@ -508,45 +491,6 @@ impl KubeInterface for KubeImpl {
         service::update_service(svc_to_update, name, namespace, self.get_kube_client()).await
     }
 
-    // Get Akri Configuration with given name and namespace
-    ///
-    /// Example:
-    ///
-    /// ```no_run
-    /// use akri_shared::k8s;
-    /// use akri_shared::k8s::KubeInterface;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// let kube = k8s::KubeImpl::new().await.unwrap();
-    /// let config = kube.find_configuration("config-1", "config-namespace").await.unwrap();
-    /// # }
-    /// ```
-    async fn find_configuration(
-        &self,
-        name: &str,
-        namespace: &str,
-    ) -> Result<Configuration, anyhow::Error> {
-        configuration::find_configuration(name, namespace, &self.get_kube_client()).await
-    }
-    // Get Akri Configurations with given namespace
-    ///
-    /// Example:
-    ///
-    /// ```no_run
-    /// use akri_shared::k8s;
-    /// use akri_shared::k8s::KubeInterface;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// let kube = k8s::KubeImpl::new().await.unwrap();
-    /// let configs = kube.get_configurations().await.unwrap();
-    /// # }
-    /// ```
-    async fn get_configurations(&self) -> Result<ConfigurationList, anyhow::Error> {
-        configuration::get_configurations(&self.get_kube_client()).await
-    }
-
     // Get Akri Instance with given name and namespace
     ///
     /// Example:
@@ -561,8 +505,8 @@ impl KubeInterface for KubeImpl {
     /// let instance = kube.find_instance("instance-1", "instance-namespace").await.unwrap();
     /// # }
     /// ```
-    async fn find_instance(&self, name: &str, namespace: &str) -> Result<Instance, anyhow::Error> {
-        instance::find_instance(name, namespace, &self.get_kube_client()).await
+    async fn find_instance(&self, name: &str) -> Result<Instance, anyhow::Error> {
+        instance::find_instance(name, &self.get_kube_client()).await
     }
     // Get Akri Instances with given namespace
     ///
@@ -605,7 +549,6 @@ impl KubeInterface for KubeImpl {
     ///         broker_properties: std::collections::HashMap::new(),
     ///     },
     ///     "instance-1",
-    ///     "instance-namespace",
     ///     "config-1",
     ///     "abcdefgh-ijkl-mnop-qrst-uvwxyz012345"
     /// ).await.unwrap();
@@ -615,14 +558,12 @@ impl KubeInterface for KubeImpl {
         &self,
         instance_to_create: &InstanceSpec,
         name: &str,
-        namespace: &str,
         owner_config_name: &str,
         owner_config_uid: &str,
     ) -> Result<(), anyhow::Error> {
         instance::create_instance(
             instance_to_create,
             name,
-            namespace,
             owner_config_name,
             owner_config_uid,
             &self.get_kube_client(),
@@ -642,12 +583,11 @@ impl KubeInterface for KubeImpl {
     /// let kube = k8s::KubeImpl::new().await.unwrap();
     /// kube.delete_instance(
     ///     "instance-1",
-    ///     "instance-namespace"
     /// ).await.unwrap();
     /// # }
     /// ```
-    async fn delete_instance(&self, name: &str, namespace: &str) -> Result<(), anyhow::Error> {
-        instance::delete_instance(name, namespace, &self.get_kube_client()).await
+    async fn delete_instance(&self, name: &str) -> Result<(), anyhow::Error> {
+        instance::delete_instance(name, &self.get_kube_client()).await
     }
     /// Update Akri Instance
     ///
@@ -672,7 +612,6 @@ impl KubeInterface for KubeImpl {
     ///         broker_properties: std::collections::HashMap::new(),
     ///     },
     ///     "instance-1",
-    ///     "instance-namespace"
     /// ).await.unwrap();
     /// # }
     /// ```
@@ -680,10 +619,8 @@ impl KubeInterface for KubeImpl {
         &self,
         instance_to_update: &InstanceSpec,
         name: &str,
-        namespace: &str,
     ) -> Result<(), anyhow::Error> {
-        instance::update_instance(instance_to_update, name, namespace, &self.get_kube_client())
-            .await
+        instance::update_instance(instance_to_update, name, &self.get_kube_client()).await
     }
 
     async fn apply_resource(
@@ -793,13 +730,9 @@ async fn set_finalizers<
 pub async fn try_delete_instance(
     kube_interface: &dyn KubeInterface,
     instance_name: &str,
-    instance_namespace: &str,
 ) -> Result<(), anyhow::Error> {
     for x in 0..MAX_INSTANCE_UPDATE_TRIES {
-        match kube_interface
-            .delete_instance(instance_name, instance_namespace)
-            .await
-        {
+        match kube_interface.delete_instance(instance_name).await {
             Ok(()) => {
                 log::trace!("try_delete_instance - deleted Instance {}", instance_name);
                 break;
@@ -838,7 +771,7 @@ pub mod test_ownership {
         mock_kube_interface
             .expect_delete_instance()
             .times(1)
-            .returning(move |_, _| {
+            .returning(move |_| {
                 let error_response = kube::error::ErrorResponse {
                     status: "random".to_string(),
                     message: "blah".to_string(),
@@ -847,7 +780,7 @@ pub mod test_ownership {
                 };
                 Err(error_response.into())
             });
-        try_delete_instance(&mock_kube_interface, "instance_name", "instance_namespace")
+        try_delete_instance(&mock_kube_interface, "instance_name")
             .await
             .unwrap();
     }
@@ -860,7 +793,7 @@ pub mod test_ownership {
         mock_kube_interface
             .expect_delete_instance()
             .times(1)
-            .returning(move |_, _| {
+            .returning(move |_| {
                 let error_response = kube::error::ErrorResponse {
                     status: "random".to_string(),
                     message: "blah".to_string(),
@@ -873,9 +806,9 @@ pub mod test_ownership {
         mock_kube_interface
             .expect_delete_instance()
             .times(1)
-            .returning(move |_, _| Ok(()))
+            .returning(move |_| Ok(()))
             .in_sequence(&mut seq);
-        try_delete_instance(&mock_kube_interface, "instance_name", "instance_namespace")
+        try_delete_instance(&mock_kube_interface, "instance_name")
             .await
             .unwrap();
     }

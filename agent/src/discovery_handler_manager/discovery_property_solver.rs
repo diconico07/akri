@@ -1,5 +1,5 @@
 use akri_discovery_utils::discovery::v0::ByteData;
-use akri_shared::akri::configuration::{
+use akri_shared::akri::discovery_configuration::{
     DiscoveryProperty, DiscoveryPropertyKeySelector, DiscoveryPropertySource,
 };
 use async_trait::async_trait;

@@ -6,10 +6,9 @@ use akri_shared::{
     akri::{metrics::run_metrics_server, API_NAMESPACE},
     k8s,
 };
-use async_std::sync::Mutex;
 use prometheus::IntGaugeVec;
 use std::sync::Arc;
-use util::{controller, instance_action, node_watcher, pod_watcher};
+use util::{controller, node_watcher};
 
 /// Length of time to sleep between controller system validation checks
 pub const SYSTEM_CHECK_DELAY_SECS: u64 = 30;
@@ -36,8 +35,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     log::info!("{} Controller logging started", API_NAMESPACE);
 
-    let synchronization = Arc::new(Mutex::new(()));
-    let instance_watch_synchronization = synchronization.clone();
     let mut tasks = Vec::new();
 
     // Start server for prometheus metrics
@@ -45,33 +42,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         run_metrics_server().await.unwrap();
     }));
 
-    // Handle existing instances
-    tasks.push(tokio::spawn({
-        async move {
-            instance_action::handle_existing_instances().await.unwrap();
-        }
-    }));
-    // Handle instance changes
-    tasks.push(tokio::spawn({
-        async move {
-            instance_action::do_instance_watch(instance_watch_synchronization)
-                .await
-                .unwrap();
-        }
-    }));
     // Watch for node disappearance
     tasks.push(tokio::spawn({
         async move {
             let mut node_watcher = node_watcher::NodeWatcher::new();
             node_watcher.watch().await.unwrap();
-        }
-    }));
-
-    // Watch for broker Pod state changes
-    tasks.push(tokio::spawn({
-        async move {
-            let mut broker_pod_watcher = pod_watcher::BrokerPodWatcher::new();
-            broker_pod_watcher.watch().await.unwrap();
         }
     }));
 

@@ -23,7 +23,6 @@ pub type InstanceList = ObjectList<Instance>;
     group = "akri.sh",
     version = "v0",
     kind = "Instance",
-    namespaced,
     shortname = "akrii",
     printcolumn = r#"{
         "name": "Config",
@@ -164,13 +163,9 @@ pub async fn get_instances(kube_client: &Client) -> Result<InstanceList, anyhow:
 ///     &api_client).await.unwrap();
 /// # }
 /// ```
-pub async fn find_instance(
-    name: &str,
-    namespace: &str,
-    kube_client: &Client,
-) -> Result<Instance, anyhow::Error> {
+pub async fn find_instance(name: &str, kube_client: &Client) -> Result<Instance, anyhow::Error> {
     log::trace!("find_instance enter");
-    let instances_client: Api<Instance> = Api::namespaced(kube_client.clone(), namespace);
+    let instances_client: Api<Instance> = Api::all(kube_client.clone());
 
     log::trace!("find_instance getting instance with name {}", name);
 
@@ -228,13 +223,12 @@ pub async fn find_instance(
 pub async fn create_instance(
     instance_to_create: &InstanceSpec,
     name: &str,
-    namespace: &str,
     owner_config_name: &str,
     owner_config_uid: &str,
     kube_client: &Client,
 ) -> Result<(), anyhow::Error> {
     log::trace!("create_instance enter");
-    let instances_client: Api<Instance> = Api::namespaced(kube_client.clone(), namespace);
+    let instances_client: Api<Instance> = Api::all(kube_client.clone());
 
     let mut instance = Instance::new(name, instance_to_create.clone());
     instance.metadata = ObjectMeta {
@@ -289,13 +283,9 @@ pub async fn create_instance(
 ///     &api_client).await.unwrap();
 /// # }
 /// ```
-pub async fn delete_instance(
-    name: &str,
-    namespace: &str,
-    kube_client: &Client,
-) -> Result<(), anyhow::Error> {
+pub async fn delete_instance(name: &str, kube_client: &Client) -> Result<(), anyhow::Error> {
     log::trace!("delete_instance enter");
-    let instances_client: Api<Instance> = Api::namespaced(kube_client.clone(), namespace);
+    let instances_client: Api<Instance> = Api::all(kube_client.clone());
     let instance_delete_params = DeleteParams::default();
     log::trace!("delete_instance instances_client.delete(name, &instance_delete_params).await?");
     match instances_client.delete(name, &instance_delete_params).await {
@@ -348,11 +338,10 @@ pub async fn delete_instance(
 pub async fn update_instance(
     instance_to_update: &InstanceSpec,
     name: &str,
-    namespace: &str,
     kube_client: &Client,
 ) -> Result<(), anyhow::Error> {
     log::trace!("update_instance enter");
-    let instances_client: Api<Instance> = Api::namespaced(kube_client.clone(), namespace);
+    let instances_client: Api<Instance> = Api::all(kube_client.clone());
     let modified_instance = Instance::new(name, instance_to_update.clone());
     match instances_client
         .patch(

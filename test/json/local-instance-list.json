@@ -6,7 +6,6 @@
             "kind": "Instance",
             "metadata": {
                 "name": "config-b-b494b6",
-                "namespace": "config-b-namespace",
                 "uid": "abcdegfh-ijkl-mnop-qrst-uvwxyz012345"
             }, 
             "spec": {

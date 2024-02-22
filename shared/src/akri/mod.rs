@@ -11,7 +11,7 @@ pub const AKRI_PREFIX: &str = "akri.sh";
 /// Container Annotation name prefix used to store slot name
 pub const AKRI_SLOT_ANNOTATION_NAME_PREFIX: &str = "akri.agent.slot-";
 
-pub mod configuration;
+pub mod discovery_configuration;
 pub mod instance;
 pub mod metrics;
 pub mod spore;

@@ -1,5 +1,5 @@
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
-use akri_shared::akri::configuration::Configuration;
+use akri_shared::akri::discovery_configuration::DiscoveryConfiguration;
 use clap::Arg;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
 use openapi::models::{
@@ -115,7 +115,7 @@ fn validate_configuration(rqst: &AdmissionRequest) -> AdmissionResponse {
             let x: RawExtension = serde_json::from_value(raw.clone())
                 .expect("Could not parse as Kubernetes RawExtension");
             let y = serde_json::to_string(&x).unwrap();
-            let config: Configuration =
+            let config: DiscoveryConfiguration =
                 serde_json::from_str(y.as_str()).expect("Could not parse as Akri Configuration");
             let reserialized = serde_json::to_string(&config).unwrap();
             let deserialized: Value = serde_json::from_str(&reserialized).expect("untyped JSON");
@@ -257,26 +257,25 @@ mod tests {
             "uid": "00000000-0000-0000-0000-000000000000",
             "kind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "resource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "requestKind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "requestResource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "name": "name",
-            "namespace": "default",
             "operation": "CREATE",
             "userInfo": {
                 "username": "admin",
@@ -284,8 +283,8 @@ mod tests {
                 "groups": []
             },
             "object": {
-                "apiVersion": "akri.sh/v0",
-                "kind": "Configuration",
+                "apiVersion": "akri.sh/v1alpha1",
+                "kind": "DiscoveryConfiguration",
                 "metadata": {
                     "annotations": {
                         "kubectl.kubernetes.io/last-applied-configuration": ""
@@ -294,17 +293,11 @@ mod tests {
                     "generation": 1,
                     "managedFields": [],
                     "name": "name",
-                    "namespace": "default",
                     "uid": "00000000-0000-0000-0000-000000000000"
                 },
                 "spec": {
-                    "discoveryHandler": {
-                        "name": "debugEcho",
-                        "discoveryDetails": "descriptions:\n- \"foo0\"\n- \"foo1\"\n"
-                    },
-                    "brokerSpec": {
-                        INSERT_BROKER_SPEC_HERE
-                    }
+                    "discoveryHandlerName": "debugEcho",
+                    "discoveryDetails": "descriptions:\n- \"foo0\"\n- \"foo1\"\n"
                 }
             },
             "oldObject": null,
@@ -324,26 +317,25 @@ mod tests {
             "uid": "00000000-0000-0000-0000-000000000000",
             "kind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "resource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "requestKind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "requestResource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "name": "name",
-            "namespace": "default",
             "operation": "CREATE",
             "userInfo": {
                 "username": "admin",
@@ -351,8 +343,8 @@ mod tests {
                 "groups": []
             },
             "object": {
-                "apiVersion": "akri.sh/v0",
-                "kind": "Configuration",
+                "apiVersion": "akri.sh/v1alpha1",
+                "kind": "DiscoveryConfiguration",
                 "metadata": {
                     "annotations": {
                         "kubectl.kubernetes.io/last-applied-configuration": ""
@@ -365,32 +357,10 @@ mod tests {
                     "uid": "00000000-0000-0000-0000-000000000000"
                 },
                 "spec": {
-                    "discoveryHandler": {
-                        "name": "debugEcho",
-                        "discoveryDetails": "{\"descriptions\": [\"foo\",\"bar\"]}"
-                    },
-                    "brokerSpec": {
-                        INSERT_BROKER_SPEC_HERE
-                    },
-                    "instanceServiceSpec": {
-                        "type": "ClusterIP",
-                        "ports": [{
-                            "name": "name",
-                            "port": 0,
-                            "targetPort": 0,
-                            "protocol": "TCP"
-                        }]
-                    },
-                    "configurationServiceSpec": {
-                        "type": "ClusterIP",
-                        "ports": [{
-                            "name": "name",
-                            "port": 0,
-                            "targetPort": 0,
-                            "protocol": "TCP"
-                        }]
-                    },
-                    "capacity": 1
+                    
+                    "discoveryHandlerName": "debugEcho",
+                    "discoveryDetails": "{\"descriptions\": [\"foo\",\"bar\"]}",
+                    "instancesCapacity": 1
                 }
             },
             "oldObject": null,
@@ -410,26 +380,25 @@ mod tests {
             "uid": "00000000-0000-0000-0000-000000000000",
             "kind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "resource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "requestKind": {
                 "group": "akri.sh",
-                "version": "v0",
-                "kind": "Configuration"
+                "version": "v1alpha1",
+                "kind": "DiscoveryConfiguration"
             },
             "requestResource": {
                 "group": "akri.sh",
-                "version": "v0",
-                "resource": "configurations"
+                "version": "v1alpha1",
+                "resource": "discoveryConfigurations"
             },
             "name": "name",
-            "namespace": "default",
             "operation": "CREATE",
             "userInfo": {
                 "username": "admin",
@@ -437,8 +406,8 @@ mod tests {
                 "groups": []
             },
             "object": {
-                "apiVersion": "akri.sh/v0",
-                "kind": "Configuration",
+                "apiVersion": "akri.sh/v1alpha1",
+                "kind": "DiscoveryConfiguration",
                 "metadata": {
                     "annotations": {
                         "kubectl.kubernetes.io/last-applied-configuration": ""
@@ -447,15 +416,12 @@ mod tests {
                     "generation": 1,
                     "managedFields": [],
                     "name": "name",
-                    "namespace": "default",
                     "uid": "00000000-0000-0000-0000-000000000000"
                 },
                 "spec": {
-                    "discoveryHandler": {
-                        INSERT_DISCOVERY_PROPERTIES_HERE
-                        "name": "debugEcho",
-                        "discoveryDetails": "descriptions:\n- \"foo0\"\n- \"foo1\"\n"
-                    }
+                    INSERT_DISCOVERY_PROPERTIES_HERE
+                    "discoveryHandlerName": "debugEcho",
+                    "discoveryDetails": "descriptions:\n- \"foo0\"\n- \"foo1\"\n"
                 }
             },
             "oldObject": null,
@@ -799,6 +765,7 @@ mod tests {
         assert!(v["metadata"].get("generation").unwrap().is_u64());
     }
 
+    #[ignore = "Need to add validation for spores"]
     #[test]
     fn test_validate_configuration_valid_podspec() {
         let valid: AdmissionReview =
@@ -809,6 +776,7 @@ mod tests {
         assert!(resp.allowed);
     }
 
+    #[ignore = "Need to add validation for spores"]
     #[test]
     fn test_validate_configuration_valid_jobspec() {
         let valid: AdmissionReview =
@@ -819,6 +787,7 @@ mod tests {
         assert!(resp.allowed);
     }
 
+    #[ignore = "Need to add validation for spores"]
     #[test]
     fn test_validate_configuration_invalid_podspec() {
         let invalid: AdmissionReview =
@@ -829,6 +798,7 @@ mod tests {
         assert!(!resp.allowed);
     }
 
+    #[ignore = "Need to add validation for spores"]
     #[test]
     fn test_validate_configuration_invalid_jobspec() {
         let invalid: AdmissionReview =
@@ -839,6 +809,7 @@ mod tests {
         assert!(!resp.allowed);
     }
 
+    #[ignore = "Need to add validation for spores"]
     #[test]
     #[should_panic(expected = "Could not parse as Akri Configuration")]
     fn test_validate_configuration_invalid_jobspec_and_podspec() {

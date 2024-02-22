@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use akri_discovery_utils::discovery::v0::{ByteData, Device, DiscoverRequest};
-use akri_shared::akri::configuration::{Configuration, DiscoveryProperty};
+use akri_shared::akri::discovery_configuration::{DiscoveryConfiguration, DiscoveryProperty};
 use akri_shared::akri::instance::Instance;
 
 use akri_shared::akri::instance::InstanceSpec;
@@ -126,7 +126,6 @@ pub trait DiscoveryHandlerRegistry: Sync + Send {
         dh_details: &str,
         dh_properties: &[DiscoveryProperty],
         extra_device_properties: HashMap<String, String>,
-        namespace: &str,
     ) -> Result<(), DiscoveryError>;
 
     /// Get a reference to a specific request, allowing one to get the related Instances
@@ -269,7 +268,7 @@ pub(super) struct DHRegistryImpl {
     requests: LockedMap<Arc<DHRequestImpl>>,
     handlers: LockedMap<HashMap<String, Arc<dyn DiscoveryHandlerEndpoint>>>,
     endpoint_notifier: broadcast::Sender<Arc<dyn DiscoveryHandlerEndpoint>>,
-    configuration_notifier: mpsc::Sender<ObjectRef<Configuration>>,
+    configuration_notifier: mpsc::Sender<ObjectRef<DiscoveryConfiguration>>,
     cdi_notifier: Arc<Mutex<watch::Sender<HashMap<String, crate::device_manager::cdi::Kind>>>>,
     kube_client: Arc<dyn DiscoveryManagerKubeInterface>,
 }
@@ -278,7 +277,7 @@ impl DHRegistryImpl {
     pub(super) fn new(
         kube_client: Arc<dyn DiscoveryManagerKubeInterface>,
         cdi_notifier: watch::Sender<HashMap<String, crate::device_manager::cdi::Kind>>,
-        configuration_notifier: mpsc::Sender<ObjectRef<Configuration>>,
+        configuration_notifier: mpsc::Sender<ObjectRef<DiscoveryConfiguration>>,
     ) -> Self {
         let (endpoint_notifier, _) = broadcast::channel(10);
 
@@ -302,7 +301,6 @@ impl DiscoveryHandlerRegistry for DHRegistryImpl {
         dh_details: &str,
         dh_properties: &[DiscoveryProperty],
         extra_device_properties: HashMap<String, String>,
-        namespace: &str,
     ) -> Result<(), DiscoveryError> {
         match self.handlers.read().await.get(dh_name) {
             Some(handlers) => {
@@ -341,7 +339,6 @@ impl DiscoveryHandlerRegistry for DHRegistryImpl {
                 let local_config_sender = self.configuration_notifier.to_owned();
                 let local_cdi_sender = self.cdi_notifier.to_owned();
                 let local_key = key.to_owned();
-                let namespace = namespace.to_owned();
                 tokio::spawn(async move {
                     let cdi_kind = format!("akri.sh/{}", local_key);
                     loop {
@@ -368,12 +365,9 @@ impl DiscoveryHandlerRegistry for DHRegistryImpl {
                                         },
                                     );
                                 });
-                                trace!("Ask for reconciliation of {}::{}", namespace, local_key);
+                                trace!("Ask for reconciliation of {}", local_key);
                                 let res = local_config_sender
-                                    .send(
-                                        ObjectRef::<Configuration>::new(&local_key)
-                                            .within(&namespace),
-                                    )
+                                    .send(ObjectRef::<DiscoveryConfiguration>::new(&local_key))
                                     .await;
                                 if res.is_err() {
                                     local_cdi_sender.lock().await.send_modify(|kind| {
@@ -383,12 +377,9 @@ impl DiscoveryHandlerRegistry for DHRegistryImpl {
                                 }
                             }
                             Err(_) => {
-                                trace!("Ask for reconciliation of {}::{}", namespace, local_key);
+                                trace!("Ask for reconciliation of {}", local_key);
                                 let _ = local_config_sender
-                                    .send(
-                                        ObjectRef::<Configuration>::new(&local_key)
-                                            .within(&namespace),
-                                    )
+                                    .send(ObjectRef::<DiscoveryConfiguration>::new(&local_key))
                                     .await;
                                 local_cdi_sender.lock().await.send_modify(|kind| {
                                     kind.remove(&cdi_kind);
@@ -826,7 +817,6 @@ mod tests {
                 "discovery details",
                 &[],
                 HashMap::from([]),
-                "namespace"
             )
             .await
             .is_err_and(|e| {
@@ -879,7 +869,6 @@ mod tests {
                 "discovery details",
                 &[],
                 HashMap::from([]),
-                "namespace"
             )
             .await
             .is_ok());
@@ -900,10 +889,7 @@ mod tests {
             }))])
             .unwrap();
         tokio::time::sleep(Duration::from_millis(500)).await;
-        assert_eq!(
-            config_rec.try_recv(),
-            Ok(ObjectRef::new("my-config").within("namespace"))
-        );
+        assert_eq!(config_rec.try_recv(), Ok(ObjectRef::new("my-config")));
 
         dev_senders
             .lock()
@@ -918,10 +904,7 @@ mod tests {
             }))])
             .unwrap();
         tokio::time::sleep(Duration::from_millis(500)).await;
-        assert_eq!(
-            config_rec.try_recv(),
-            Ok(ObjectRef::new("my-config").within("namespace"))
-        );
+        assert_eq!(config_rec.try_recv(), Ok(ObjectRef::new("my-config")));
 
         assert_eq!(
             cdi_rec.borrow_and_update().clone(),
@@ -950,10 +933,7 @@ mod tests {
         dev_senders.lock().unwrap().pop();
         close_2.send(()).unwrap();
         tokio::time::sleep(Duration::from_millis(500)).await;
-        assert_eq!(
-            config_rec.try_recv(),
-            Ok(ObjectRef::new("my-config").within("namespace"))
-        );
+        assert_eq!(config_rec.try_recv(), Ok(ObjectRef::new("my-config")));
         assert_eq!(
             cdi_rec.borrow_and_update().clone(),
             HashMap::from([(
@@ -974,10 +954,7 @@ mod tests {
         dev_senders.lock().unwrap().pop();
         close_1.send(()).unwrap();
         tokio::time::sleep(Duration::from_millis(500)).await;
-        assert_eq!(
-            config_rec.try_recv(),
-            Ok(ObjectRef::new("my-config").within("namespace"))
-        );
+        assert_eq!(config_rec.try_recv(), Ok(ObjectRef::new("my-config")));
         assert!(cdi_rec.borrow_and_update().clone().is_empty());
     }
 }

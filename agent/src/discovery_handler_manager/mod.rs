@@ -6,7 +6,7 @@ mod registration_socket;
 
 use std::{collections::HashMap, sync::Arc};
 
-use akri_shared::{akri::configuration::Configuration, k8s::crud::IntoApi};
+use akri_shared::{akri::discovery_configuration::DiscoveryConfiguration, k8s::crud::IntoApi};
 use k8s_openapi::api::core::v1::{ConfigMap, Secret};
 
 use kube_runtime::reflector::ObjectRef;
@@ -43,7 +43,7 @@ pub fn new_registry(
 ) -> (
     watch::Receiver<HashMap<String, crate::device_manager::cdi::Kind>>,
     impl discovery_handler_registry::DiscoveryHandlerRegistry,
-    mpsc::Receiver<ObjectRef<Configuration>>,
+    mpsc::Receiver<ObjectRef<DiscoveryConfiguration>>,
 ) {
     let (sender, receiver) = watch::channel(Default::default());
     let (configuration_notifier, notifier) = mpsc::channel(10);

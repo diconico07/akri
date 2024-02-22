@@ -146,7 +146,6 @@ impl DiscoveryHandler for DiscoveryHandlerImpl {
 mod tests {
     use super::*;
     use akri_discovery_utils::discovery::v0::DiscoverRequest;
-    use akri_shared::akri::configuration::DiscoveryHandlerInfo;
 
     #[test]
     fn test_deserialize_discovery_details_empty() {
@@ -178,12 +177,9 @@ mod tests {
         // Make devices "online"
         fs::write(DEBUG_ECHO_AVAILABILITY_CHECK_PATH, "").unwrap();
         let debug_echo_yaml = r#"
-          name: debugEcho
-          discoveryDetails: |+
-              descriptions:
-              - "foo1"
+            descriptions:
+            - "foo1"
         "#;
-        let deserialized: DiscoveryHandlerInfo = serde_yaml::from_str(debug_echo_yaml).unwrap();
         let discovery_handler = DiscoveryHandlerImpl::new(None);
         let properties: HashMap<String, String> = [(
             super::super::DEBUG_ECHO_DESCRIPTION_LABEL.to_string(),
@@ -199,7 +195,7 @@ mod tests {
             device_specs: Vec::default(),
         };
         let discover_request = tonic::Request::new(DiscoverRequest {
-            discovery_details: deserialized.discovery_details.clone(),
+            discovery_details: debug_echo_yaml.to_string(),
             discovery_properties: HashMap::new(),
         });
         let mut stream = discovery_handler

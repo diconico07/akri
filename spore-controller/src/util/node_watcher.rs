@@ -222,9 +222,6 @@ impl NodeWatcher {
         );
         for instance in instances.items {
             let instance_name = instance.metadata.name.clone().unwrap();
-            let instance_namespace = instance.metadata.namespace.as_ref().ok_or_else(|| {
-                anyhow::anyhow!("Namespace not found for instance: {}", instance_name)
-            })?;
 
             trace!(
                 "handle_node_disappearance - make sure node is not referenced here: {:?}",
@@ -237,19 +234,15 @@ impl NodeWatcher {
                     self.try_remove_nodes_from_instance(
                         vanished_node_name,
                         &instance_name,
-                        instance_namespace,
                         &instance,
                         kube_interface,
                     )
                     .await
                 } else {
-                    let retry_instance = kube_interface
-                        .find_instance(&instance_name, instance_namespace)
-                        .await?;
+                    let retry_instance = kube_interface.find_instance(&instance_name).await?;
                     self.try_remove_nodes_from_instance(
                         vanished_node_name,
                         &instance_name,
-                        instance_namespace,
                         &retry_instance,
                         kube_interface,
                     )
@@ -277,7 +270,6 @@ impl NodeWatcher {
         &self,
         vanished_node_name: &str,
         instance_name: &str,
-        instance_namespace: &str,
         instance: &Instance,
         kube_interface: &impl KubeInterface,
     ) -> Result<(), anyhow::Error> {
@@ -326,14 +318,13 @@ impl NodeWatcher {
         };
 
         trace!(
-            "handle_node_disappearance - kube_interface.update_instance name: {}, namespace: {}, {:?}",
+            "handle_node_disappearance - kube_interface.update_instance name: {}, {:?}",
             &instance_name,
-            &instance_namespace,
             &modified_instance
         );
 
         kube_interface
-            .update_instance(&modified_instance, instance_name, instance_namespace)
+            .update_instance(&modified_instance, instance_name)
             .await
     }
 }
@@ -348,7 +339,6 @@ mod tests {
     struct UpdateInstance {
         instance_to_update: InstanceSpec,
         instance_name: &'static str,
-        instance_namespace: &'static str,
     }
 
     #[derive(Clone)]
@@ -373,7 +363,6 @@ mod tests {
                 mock,
                 update_instance.instance_to_update.clone(),
                 update_instance.instance_name,
-                update_instance.instance_namespace,
                 false,
             );
         }
@@ -468,7 +457,6 @@ mod tests {
                 update_instance: Some(UpdateInstance {
                     instance_to_update: instance,
                     instance_name: "config-a-359973",
-                    instance_namespace: "config-a-namespace",
                 }),
             },
         );
@@ -537,7 +525,6 @@ mod tests {
                 update_instance: Some(UpdateInstance {
                     instance_to_update: instance,
                     instance_name: "config-a-359973",
-                    instance_namespace: "config-a-namespace",
                 }),
             },
         );
@@ -585,12 +572,12 @@ mod tests {
         });
         mock.expect_update_instance()
             .times(MAX_INSTANCE_UPDATE_TRIES as usize)
-            .withf(move |_instance, n, ns| n == "config-a-359973" && ns == "config-a-namespace")
-            .returning(move |_, _, _| Err(None.ok_or_else(|| anyhow::anyhow!("failure"))?));
+            .withf(move |_instance, n| n == "config-a-359973")
+            .returning(move |_, _| Err(None.ok_or_else(|| anyhow::anyhow!("failure"))?));
         mock.expect_find_instance()
             .times((MAX_INSTANCE_UPDATE_TRIES - 1) as usize)
-            .withf(move |n, ns| n == "config-a-359973" && ns == "config-a-namespace")
-            .returning(move |_, _| {
+            .withf(move |n| n == "config-a-359973")
+            .returning(move |_| {
                 let instance_file = "../test/json/shared-instance-update.json";
                 let instance_json = file::read_file_to_string(instance_file);
                 let instance: Instance = serde_json::from_str(&instance_json).unwrap();
@@ -615,9 +602,8 @@ mod tests {
         let mut mock = MockKubeInterface::new();
         mock.expect_update_instance()
             .times(1)
-            .withf(move |ins, n, ns| {
+            .withf(move |ins, n| {
                 n == "config-a"
-                    && ns == "config-a-namespace"
                     && !ins.nodes.contains(&"node-b".to_string())
                     && ins
                         .device_usage
@@ -633,17 +619,11 @@ mod tests {
                         .first()
                         .is_none()
             })
-            .returning(move |_, _, _| Ok(()));
+            .returning(move |_, _| Ok(()));
 
         let node_watcher = NodeWatcher::new();
         assert!(node_watcher
-            .try_remove_nodes_from_instance(
-                "node-b",
-                "config-a",
-                "config-a-namespace",
-                &kube_object_instance,
-                &mock,
-            )
+            .try_remove_nodes_from_instance("node-b", "config-a", &kube_object_instance, &mock,)
             .await
             .is_ok());
     }

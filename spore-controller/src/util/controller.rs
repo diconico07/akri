@@ -5,7 +5,7 @@ use std::{
 };
 
 use akri_shared::{
-    akri::{configuration::Configuration, instance::Instance, spore::Spore},
+    akri::{discovery_configuration::DiscoveryConfiguration, instance::Instance, spore::Spore},
     k8s,
 };
 use futures::{stream, StreamExt, TryStreamExt};
@@ -191,7 +191,7 @@ async fn reconcile(obj: Arc<Spore>, ctx: Arc<Context>) -> Result<Action, Error> 
         .into_iter()
         .filter(|i| {
             i.metadata.owner_references.iter().flatten().any(|o| {
-                ObjectRef::<Configuration>::from_owner_ref(None, o, ())
+                ObjectRef::<DiscoveryConfiguration>::from_owner_ref(None, o, ())
                     .is_some_and(|r| r.name == obj.spec.discovery_selector.name)
             })
         })
@@ -553,11 +553,10 @@ mod tests {
                 items: vec![Instance {
                     metadata: kube::core::ObjectMeta {
                         name: Some("instance-a".to_string()),
-                        namespace: Some("not-relevant".to_string()),
                         uid: Some("5432".to_string()),
                         owner_references: Some(vec![OwnerReference {
-                            api_version: "akri.sh/v0".to_string(),
-                            kind: "Configuration".to_string(),
+                            api_version: "akri.sh/v1alpha1".to_string(),
+                            kind: "DiscoveryConfiguration".to_string(),
                             name: "config-a".to_string(),
                             uid: "6789".to_string(),
                             ..Default::default()

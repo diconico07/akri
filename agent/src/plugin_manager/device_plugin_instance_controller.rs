@@ -137,7 +137,6 @@ struct InstanceDevicePlugin {
     slots_status: Mutex<watch::Sender<Vec<DeviceUsage>>>,
     node_name: String,
     instance_name: String,
-    instance_namespace: String,
     kube_client: Arc<dyn IntoApi<Instance>>,
     stopper: Stopper,
 }
@@ -146,7 +145,6 @@ impl InstanceDevicePlugin {
     fn new(
         node_name: String,
         plugin_name: String,
-        namespace: String,
         device: cdi::Device,
         slots: &HashMap<String, String>,
         capacity: usize,
@@ -160,7 +158,6 @@ impl InstanceDevicePlugin {
             instance_name: plugin_name,
             kube_client: client,
             stopper: Stopper::new(),
-            instance_namespace: namespace,
         })
     }
 
@@ -219,7 +216,7 @@ impl InstanceDevicePlugin {
                 _ => None,
             })
             .collect();
-        let api = self.kube_client.namespaced(&self.instance_namespace);
+        let api = self.kube_client.all();
         let patch = Patch::Apply(
             serde_json::to_value(Object {
                 types: Some(TypeMeta {
@@ -276,7 +273,7 @@ impl InstanceDevicePlugin {
                 _ => None,
             })
             .collect();
-        let api = self.kube_client.namespaced(&self.instance_namespace);
+        let api = self.kube_client.all();
         let patch = Patch::Apply(
             serde_json::to_value(Object {
                 types: Some(TypeMeta {
@@ -812,7 +809,7 @@ pub async fn reconcile(
     ctx: Arc<DevicePluginManager>,
 ) -> Result<Action, DevicePluginError> {
     trace!("Plugin Manager: Reconciling {}", instance.name_any());
-    let api = ctx.kube_client.namespaced(&instance.namespace().unwrap());
+    let api = ctx.kube_client.all();
     if !instance.spec.nodes.contains(&ctx.node_name)
         || instance.metadata.deletion_timestamp.is_some()
     {
@@ -849,7 +846,6 @@ pub async fn reconcile(
                     let plugin = Arc::new(InstanceDevicePlugin::new(
                         ctx.node_name.to_owned(),
                         instance.name_any(),
-                        instance.namespace().unwrap_or("default".to_string()),
                         device,
                         &instance.spec.device_usage,
                         instance.spec.capacity,
@@ -993,7 +989,6 @@ mod tests {
         let plugin = InstanceDevicePlugin::new(
             "node-a".to_owned(),
             "my-device".to_owned(),
-            "namespace-a".to_owned(),
             Device {
                 name: "my-device".to_owned(),
                 annotations: Default::default(),
@@ -1022,7 +1017,7 @@ mod tests {
     async fn test_free_slot() {
         let dm = crate::device_manager::MockDeviceManager::new();
         let mut kube_client = MockIntoApi::new();
-        kube_client.expect_namespaced().returning(|_| {
+        kube_client.expect_all().returning(|| {
             let mut api = MockApi::new();
             api.expect_raw_patch()
                 .with(
@@ -1078,7 +1073,6 @@ mod tests {
             slots_status: Mutex::new(s),
             node_name: "node-a".to_owned(),
             instance_name: "instance-a".to_owned(),
-            instance_namespace: "namespace-a".to_owned(),
             kube_client,
             stopper: stopper.clone(),
         });
@@ -1139,7 +1133,6 @@ mod tests {
             slots_status: Mutex::new(s),
             node_name: "node-a".to_owned(),
             instance_name: "instance-a".to_owned(),
-            instance_namespace: "namespace-a".to_owned(),
             kube_client,
             stopper: stopper.clone(),
         });
@@ -1180,7 +1173,6 @@ mod tests {
             slots_status: Mutex::new(s),
             node_name: "node-a".to_owned(),
             instance_name: "instance-a".to_owned(),
-            instance_namespace: "namespace-a".to_owned(),
             kube_client,
             stopper: stopper.clone(),
         });
@@ -1248,7 +1240,7 @@ mod tests {
     #[tokio::test]
     async fn test_config_plugin_allocate() {
         let mut kube_client = MockIntoApi::new();
-        kube_client.expect_namespaced().returning(|_| {
+        kube_client.expect_all().returning(|| {
             let mut api = MockApi::new();
             api.expect_raw_patch().returning(|_, _, _| {
                 Ok(Instance {
@@ -1288,7 +1280,6 @@ mod tests {
             slots_status: Mutex::new(s),
             node_name: "node-a".to_owned(),
             instance_name: "instance-a".to_owned(),
-            instance_namespace: "namespace-a".to_owned(),
             kube_client,
             stopper: stopper.clone(),
         });
@@ -1320,7 +1311,7 @@ mod tests {
     #[tokio::test]
     async fn test_instance_plugin_allocate() {
         let mut kube_client = MockIntoApi::new();
-        kube_client.expect_namespaced().returning(|_| {
+        kube_client.expect_all().returning(|| {
             let mut api = MockApi::new();
             api.expect_raw_patch()
                 .with(
@@ -1382,7 +1373,6 @@ mod tests {
             slots_status: Mutex::new(s),
             node_name: "node-a".to_owned(),
             instance_name: "instance-a".to_owned(),
-            instance_namespace: "namespace-a".to_owned(),
             kube_client,
             stopper: stopper.clone(),
         });
@@ -1412,7 +1402,6 @@ mod tests {
             InstanceDevicePlugin::new(
                 "node-a".to_owned(),
                 "instance-a".to_owned(),
-                "namespace-a".to_owned(),
                 Device {
                     name: "my-device".to_string(),
                     annotations: Default::default(),
