@@ -59,6 +59,7 @@ pub async fn start_controller(
     let api = ctx.client.all().as_inner();
     let controller = Controller::new(api, Default::default());
 
+    info!("Starting DiscoveryConfiguration Controller");
     controller
         .graceful_shutdown_on(async {
             let mut signal =
@@ -69,6 +70,7 @@ pub async fn start_controller(
         .run(reconcile, error_policy, ctx)
         .for_each(|_| futures::future::ready(()))
         .await;
+    info!("Stopping DiscoveryConfiguration Controller");
 }
 
 pub async fn reconcile(
@@ -346,6 +348,7 @@ mod tests {
                 shared: false,
                 nodes: vec!["node-a".to_string()],
                 device_usage: Default::default(),
+                active_claims: Default::default(),
             },
         };
 
@@ -383,6 +386,7 @@ mod tests {
                 shared: false,
                 nodes: vec!["node-a".to_string(), "node-b".to_string()],
                 device_usage: Default::default(),
+                active_claims: Default::default(),
             },
         };
 
@@ -419,6 +423,7 @@ mod tests {
                 shared: false,
                 nodes: vec!["node-b".to_string()],
                 device_usage: Default::default(),
+                active_claims: Default::default(),
             },
         };
 
@@ -502,6 +507,7 @@ mod tests {
                     shared: true,
                     nodes: vec!["node-a".to_string()],
                     device_usage: Default::default(),
+                    active_claims: Default::default(),
                 },
             },
             Instance {
@@ -525,6 +531,7 @@ mod tests {
                     shared: true,
                     nodes: vec!["node-b".to_string()],
                     device_usage: Default::default(),
+                    active_claims: Default::default(),
                 },
             },
             Instance {
@@ -548,6 +555,7 @@ mod tests {
                     shared: true,
                     nodes: vec!["node-a".to_string()],
                     device_usage: Default::default(),
+                    active_claims: Default::default(),
                 },
             },
         ]));

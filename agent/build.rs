@@ -11,6 +11,9 @@ fn main() {
     tonic_build::configure()
         .build_client(false)
         .out_dir("./src/plugin_manager")
-        .compile(&["./proto/pluginregistration.proto"], &["./proto"])
+        .compile(
+            &["./proto/pluginregistration.proto", "./proto/dra.proto"],
+            &["./proto"],
+        )
         .expect("failed to compile protos");
 }

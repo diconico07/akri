@@ -81,6 +81,47 @@ sporeController:
     # cpuLimit defines the maximum amount of CPU this Pod can consume.
     cpuLimit: 26m
 
+driverController:
+  # enabled defines whether to apply the Akri Spore-controller
+  enabled: true
+  image:
+    # repository is the Akri Spore-controller container reference
+    repository: ghcr.io/project-akri/akri/driver-controller
+    # tag is the Akri Spore-controller container tag
+    # spore-controller.yaml will default to v(AppVersion)[-dev]
+    # with `-dev` added if `useDevelopmentContainers` is specified
+    tag:
+    # pullPolicy is the Akri Spore-controller pull policy
+    pullPolicy: "Always"
+  # ensures container doesn't run with unnecessary priviledges
+  securityContext:
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  # onlyOnControlPlane dictates whether the Akri Spore-controller will only run on nodes with 
+  # the label with (key, value) of ("node-role.kubernetes.io/master", "")
+  onlyOnControlPlane: false
+  # allowOnControlPlane dictates whether a toleration will be added to allow to Akri Spore-controller 
+  # to run on the control plane node
+  allowOnControlPlane: true
+  # nodeSelectors is the array of nodeSelectors used to target nodes for the Akri Spore-controller to run on
+  # This can be set from the helm command line using `--set spore-controller.nodeSelectors.label="value"`
+  nodeSelectors: {}
+  resources:
+    # memoryRequest defines the minimum amount of RAM that must be available to this Pod
+    # for it to be scheduled by the Kubernetes Scheduler
+    memoryRequest: 11Mi
+    # cpuRequest defines the minimum amount of CPU that must be available to this Pod
+    # for it to be scheduled by the Kubernetes Scheduler
+    cpuRequest: 10m
+    # memoryLimit defines the maximum amount of RAM this Pod can consume.
+    memoryLimit: 100Mi
+    # cpuLimit defines the maximum amount of CPU this Pod can consume.
+    cpuLimit: 26m
+
 agent:
   # enabled defines whether to apply the Akri Agent
   enabled: true
@@ -107,6 +148,10 @@ agent:
     discoveryHandlers: /var/lib/akri
     # kubeletDevicePlugins is the location of the kubelet device-plugin sockets
     kubeletDevicePlugins: /var/lib/kubelet/device-plugins
+    kubeletPlugins: /var/lib/kubelet/plugins
+    kubeletPluginsRegistry: /var/lib/kubelet/plugins_registry
+    cdi: /var/run/cdi
+
     # kubeletPodResources is the location of the kubelet pod-resources socket
     kubeletPodResources: /var/lib/kubelet/pod-resources
     # containerRuntimeSocket is the default node path of the container runtime socket. 
@@ -841,7 +886,7 @@ udev:
 
 # Admission Controllers (Webhooks)
 webhookConfiguration:
-  # enabled defines whether to apply the Akri Admission Spore-controller (Webhook) for Akri Configurations
+  # enabled defines whether to apply the Akri Admission Controller (Webhook) for Akri Configurations
   enabled: true
   # name of the webhook
   name: akri-webhook-configuration

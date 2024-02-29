@@ -10,6 +10,14 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: akri-driver-controller-sa
+  labels: {{- include "akri.labels" . | nindent 4 }}
+    app.kubernetes.io/name: akri-driver-controller
+    app.kubernetes.io/component: driver-controller
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: akri-agent-sa
   labels: {{- include "akri.labels" . | nindent 4 }}
     app.kubernetes.io/name: akri-agent
@@ -42,6 +50,30 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: "akri-driver-controller-role"
+  labels: {{- include "akri.labels" . | nindent 4 }}
+    app.kubernetes.io/name: akri-driver-controller
+    app.kubernetes.io/component: driver-controller
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["resourceclasses", "podschedulingcontexts"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["resource.k8s.io"]
+  resources: ["podschedulingcontexts/status", "resourceclaims", "resourceclaims/status"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [{{ .Values.crds.group | quote }}]
+  resources: ["instances", "spores"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [{{ .Values.crds.group | quote }}]
+  resources: ["discoveryconfigurations", "instancefilters"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: "akri-agent-role"
   labels: {{- include "akri.labels" . | nindent 4 }}
     app.kubernetes.io/name: akri-agent
@@ -54,7 +86,7 @@ rules:
   resources: ["instances"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: [{{ .Values.crds.group | quote }}]
-  resources: ["configurations"]
+  resources: ["discoveryconfigurations"]
   verbs: ["get", "list", "watch", "patch"]
 ---
 apiVersion: 'rbac.authorization.k8s.io/v1'
@@ -72,6 +104,23 @@ roleRef:
 subjects:
   - kind: 'ServiceAccount'
     name: 'akri-spore-controller-sa'
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: 'rbac.authorization.k8s.io/v1'
+kind: 'ClusterRoleBinding'
+metadata:
+  name: 'akri-driver-controller-binding'
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "akri.labels" . | nindent 4 }}
+    app.kubernetes.io/name: akri-driver-controller
+    app.kubernetes.io/component: driver-controller
+roleRef:
+  apiGroup: ''
+  kind: 'ClusterRole'
+  name: 'akri-driver-controller-role'
+subjects:
+  - kind: 'ServiceAccount'
+    name: 'akri-driver-controller-sa'
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: 'rbac.authorization.k8s.io/v1'

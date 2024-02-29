@@ -4,6 +4,7 @@ extern crate serde_derive;
 extern crate serde_yaml;
 
 pub mod akri;
+pub mod dra;
 pub mod k8s;
 pub mod os;
 pub mod uds;

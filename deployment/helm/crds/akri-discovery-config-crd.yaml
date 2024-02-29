@@ -1,0 +1,122 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: discoveryconfigurations.akri.sh
+spec:
+  group: akri.sh
+  names:
+    categories: []
+    kind: DiscoveryConfiguration
+    plural: discoveryconfigurations
+    shortNames: []
+    singular: discoveryconfiguration
+  scope: Cluster
+  versions:
+    - additionalPrinterColumns: []
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for DiscoveryConfigurationSpec via `CustomResource`"
+          properties:
+            spec:
+              properties:
+                discoveryDetails:
+                  default: ""
+                  description: A string that a Discovery Handler knows how to parse to obtain necessary discovery details
+                  type: string
+                discoveryHandlerName:
+                  description: The name of the Discovery Handler
+                  type: string
+                discoveryProperties:
+                  description: "A set of extra properties the Discovery Handler may need, these can be pulled from ConfigMaps or Secrets"
+                  items:
+                    description: DiscoveryProperty represents a property for discovery devices
+                    properties:
+                      name:
+                        description: Name of the discovery property
+                        type: string
+                      value:
+                        description: value of the discovery property
+                        nullable: true
+                        type: string
+                      valueFrom:
+                        description: Source for the discovery property value. Ignored if value is not empty.
+                        nullable: true
+                        oneOf:
+                          - required:
+                              - configMapKeyRef
+                          - required:
+                              - secretKeyRef
+                        properties:
+                          configMapKeyRef:
+                            description: Source is a key of a ConfigMap.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: Name of the referent.
+                                type: string
+                              namespace:
+                                default: default
+                                description: Namespace of the referent
+                                type: string
+                              optional:
+                                description: Specify whether the referent or its key must be defined
+                                nullable: true
+                                type: boolean
+                            required:
+                              - key
+                              - name
+                            type: object
+                          secretKeyRef:
+                            description: Source is a key of a Secret.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: Name of the referent.
+                                type: string
+                              namespace:
+                                default: default
+                                description: Namespace of the referent
+                                type: string
+                              optional:
+                                description: Specify whether the referent or its key must be defined
+                                nullable: true
+                                type: boolean
+                            required:
+                              - key
+                              - name
+                            type: object
+                        type: object
+                    required:
+                      - name
+                    type: object
+                  nullable: true
+                  type: array
+                extraInstancesProperties:
+                  additionalProperties:
+                    type: string
+                  default: {}
+                  description: A set of extra properties that will get added to the Instance properties and forwarded to workloads using the device
+                  type: object
+                instancesCapacity:
+                  default: 1
+                  description: The number of slots for a device instance
+                  format: uint
+                  minimum: 1.0
+                  type: integer
+              required:
+                - discoveryHandlerName
+              type: object
+          required:
+            - spec
+          title: DiscoveryConfiguration
+          type: object
+      served: true
+      storage: true
+      subresources: {}
+

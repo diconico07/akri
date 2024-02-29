@@ -252,6 +252,7 @@ pub fn modify_pod_spec(
                         None => None,
                     }
                 },
+                claims: None,
             });
         };
     }
@@ -344,6 +345,7 @@ mod broker_podspec_tests {
                 resources: Some(ResourceRequirements {
                     limits: Some(placeholder_limits),
                     requests: Some(placeholder_requests),
+                    claims: None,
                 }),
                 ..Default::default()
             }],
@@ -369,6 +371,7 @@ mod broker_podspec_tests {
                     resources: Some(ResourceRequirements {
                         limits: Some(placeholder_limits1),
                         requests: Some(placeholder_requests1),
+                        claims: None,
                     }),
                     ..Default::default()
                 },
@@ -377,6 +380,7 @@ mod broker_podspec_tests {
                     resources: Some(ResourceRequirements {
                         limits: Some(placeholder_limits2),
                         requests: Some(placeholder_requests2),
+                        claims: None,
                     }),
                     ..Default::default()
                 },
@@ -402,6 +406,7 @@ mod broker_podspec_tests {
                     resources: Some(ResourceRequirements {
                         limits: Some(placeholder_limits.clone()),
                         requests: Some(placeholder_limits.clone()),
+                        claims: None,
                     }),
                     ..Default::default()
                 },
@@ -410,6 +415,7 @@ mod broker_podspec_tests {
                     resources: Some(ResourceRequirements {
                         limits: Some(placeholder_limits.clone()),
                         requests: Some(placeholder_limits.clone()),
+                        claims: None,
                     }),
                     ..Default::default()
                 },
@@ -419,6 +425,7 @@ mod broker_podspec_tests {
                 resources: Some(ResourceRequirements {
                     limits: Some(placeholder_limits.clone()),
                     requests: Some(placeholder_limits.clone()),
+                    claims: None,
                 }),
                 ..Default::default()
             }]),

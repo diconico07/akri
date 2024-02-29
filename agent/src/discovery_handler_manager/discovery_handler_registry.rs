@@ -77,7 +77,6 @@ impl From<DiscoveredDevice> for crate::device_manager::cdi::Device {
         let dev = value.inner();
         Self {
             name: hash,
-            annotations: Default::default(),
             container_edits: crate::device_manager::cdi::ContainerEdit {
                 env: dev
                     .properties
@@ -178,6 +177,7 @@ impl DHRequestImpl {
                 shared,
                 nodes: Default::default(),
                 device_usage: Default::default(),
+                active_claims: Default::default(),
                 capacity: Default::default(),
             },
             metadata: ObjectMeta {
@@ -349,19 +349,18 @@ impl DiscoveryHandlerRegistry for DHRegistryImpl {
                                         cdi_kind.clone(),
                                         crate::device_manager::cdi::Kind {
                                             kind: cdi_kind.clone(),
-                                            annotations: Default::default(),
                                             devices: local_req_notifier
                                                 .borrow_and_update()
                                                 .iter()
                                                 .map(|d| d.as_ref().clone().into())
                                                 .collect(),
-                                            container_edits: vec![ContainerEdit {
+                                            container_edits: Some(ContainerEdit {
                                                 env: extra_device_properties
                                                     .iter()
                                                     .map(|(k, v)| format!("{}={}", k, v))
                                                     .collect(),
                                                 ..Default::default()
-                                            }],
+                                            }),
                                         },
                                     );
                                 });
@@ -513,7 +512,6 @@ mod tests {
             Into::<cdi::Device>::into(local_device),
             cdi::Device {
                 name: "e77db4".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     env: vec![],
                     device_nodes: vec![],
@@ -526,7 +524,6 @@ mod tests {
             Into::<cdi::Device>::into(other_local_device),
             cdi::Device {
                 name: "099763".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     env: vec![],
                     device_nodes: vec![],
@@ -539,7 +536,6 @@ mod tests {
             Into::<cdi::Device>::into(shared_device),
             cdi::Device {
                 name: "4294ea".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     env: vec!["ENV_KEY=env_value".to_owned()],
                     device_nodes: vec![cdi::DeviceNode {
@@ -607,6 +603,7 @@ mod tests {
                     shared: false,
                     nodes: Default::default(),
                     device_usage: Default::default(),
+                    active_claims: Default::default(),
                 }
             }]
         );
@@ -912,17 +909,14 @@ mod tests {
                 "akri.sh/my-config".to_owned(),
                 Kind {
                     kind: "akri.sh/my-config".to_owned(),
-                    annotations: Default::default(),
-                    container_edits: vec![ContainerEdit::default()],
+                    container_edits: Some(ContainerEdit::default()),
                     devices: vec![
                         crate::device_manager::cdi::Device {
                             name: "cb2ad7".to_owned(),
-                            annotations: Default::default(),
                             container_edits: Default::default(),
                         },
                         crate::device_manager::cdi::Device {
                             name: "7bbc11".to_owned(),
-                            annotations: Default::default(),
                             container_edits: Default::default(),
                         },
                     ]
@@ -940,11 +934,9 @@ mod tests {
                 "akri.sh/my-config".to_owned(),
                 Kind {
                     kind: "akri.sh/my-config".to_owned(),
-                    annotations: Default::default(),
-                    container_edits: vec![Default::default()],
+                    container_edits: None,
                     devices: vec![crate::device_manager::cdi::Device {
                         name: "cb2ad7".to_owned(),
-                        annotations: Default::default(),
                         container_edits: Default::default(),
                     },]
                 }

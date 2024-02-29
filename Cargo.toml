@@ -19,6 +19,6 @@ members = [
     "discovery-handler-modules/debug-echo-discovery-handler", 
     "discovery-handler-modules/onvif-discovery-handler", 
     "discovery-handler-modules/opcua-discovery-handler", 
-    "discovery-handler-modules/udev-discovery-handler",
+    "discovery-handler-modules/udev-discovery-handler", "driver-controller",
 ]
 resolver = "2"

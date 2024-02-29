@@ -444,7 +444,7 @@ fn cdi_device_to_car(instance_name: &str, device: &cdi::Device) -> ContainerAllo
                 permissions: d.permissions.clone().unwrap_or_default(),
             })
             .collect(),
-        annotations: device.annotations.clone(),
+        annotations: Default::default(),
     }
 }
 
@@ -991,7 +991,6 @@ mod tests {
             "my-device".to_owned(),
             Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1044,6 +1043,7 @@ mod tests {
                             shared: false,
                             nodes: Default::default(),
                             device_usage: Default::default(),
+                            active_claims: Default::default(),
                         },
                     })
                 });
@@ -1065,7 +1065,6 @@ mod tests {
         let instance_plugin = Arc::new(InstanceDevicePlugin {
             device: Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1125,7 +1124,6 @@ mod tests {
         let instance_plugin = Arc::new(InstanceDevicePlugin {
             device: Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1165,7 +1163,6 @@ mod tests {
         let instance_plugin = Arc::new(InstanceDevicePlugin {
             device: Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1253,6 +1250,7 @@ mod tests {
                         shared: false,
                         nodes: Default::default(),
                         device_usage: Default::default(),
+                        active_claims: Default::default(),
                     },
                 })
             });
@@ -1272,7 +1270,6 @@ mod tests {
         let instance_plugin = Arc::new(InstanceDevicePlugin {
             device: Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1346,6 +1343,7 @@ mod tests {
                             shared: false,
                             nodes: Default::default(),
                             device_usage: Default::default(),
+                            active_claims: Default::default(),
                         },
                     })
                 });
@@ -1365,7 +1363,6 @@ mod tests {
         let instance_plugin = Arc::new(InstanceDevicePlugin {
             device: Device {
                 name: "my-device".to_owned(),
-                annotations: Default::default(),
                 container_edits: ContainerEdit {
                     ..Default::default()
                 },
@@ -1404,7 +1401,6 @@ mod tests {
                 "instance-a".to_owned(),
                 Device {
                     name: "my-device".to_string(),
-                    annotations: Default::default(),
                     container_edits: Default::default(),
                 },
                 &HashMap::from([("instance-a-1".to_owned(), "node-b".to_owned())]),

@@ -570,6 +570,7 @@ mod tests {
                         shared: false,
                         nodes: Default::default(),
                         device_usage: Default::default(),
+                        active_claims: Default::default(),
                         capacity: 1,
                         cdi_name: "akri.sh/config-a=instance-a".to_owned(),
                     },

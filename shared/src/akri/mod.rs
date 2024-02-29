@@ -13,6 +13,7 @@ pub const AKRI_SLOT_ANNOTATION_NAME_PREFIX: &str = "akri.agent.slot-";
 
 pub mod discovery_configuration;
 pub mod instance;
+pub mod instance_filter;
 pub mod metrics;
 pub mod spore;
 

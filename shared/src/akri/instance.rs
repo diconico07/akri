@@ -86,6 +86,10 @@ pub struct InstanceSpec {
     #[serde(default)]
     #[schemars(schema_with = "ssa_usage_granular")]
     pub device_usage: HashMap<String, String>,
+
+    #[serde(default)]
+    #[schemars(schema_with = "ssa_nodes_set")]
+    pub active_claims: Vec<String>,
 }
 
 fn ssa_nodes_set(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {

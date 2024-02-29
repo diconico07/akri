@@ -21,6 +21,10 @@ use std::{
 #[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    use akri_shared::akri::instance::Instance;
+    use kube::Api;
+    use kube_runtime::{reflector, watcher};
+
     println!("{} Agent start", API_NAMESPACE);
 
     println!(
@@ -61,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             .unwrap()
         }));
 
+        /*
         let im_device_manager = Arc::new(device_manager::InMemoryManager::new(device_notifier));
 
         let device_plugin_manager = Arc::new(
@@ -78,7 +83,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
         tasks.push(tokio::spawn(
             plugin_manager::device_plugin_slot_reclaimer::start_reclaimer(device_plugin_manager),
-        ));
+        ));*/
+
+        let file_device_manager =
+            Arc::new(device_manager::file_based::FileBasedDeviceManager::new(
+                std::path::PathBuf::from("/etc/cdi"),
+                device_notifier,
+            ));
+        plugin_manager::dra_plugin::start_plugin(file_device_manager).await;
+
+        let instances_api: Api<Instance> =
+            akri_shared::k8s::crud::IntoApi::all(kube_client.as_ref()).as_inner();
+        let (instances_cache, instances_writer) = reflector::store();
+        let instances_reflector =
+            reflector::reflector(instances_writer, watcher(instances_api, Default::default()));
+
+        tasks.push(tokio::spawn(async {
+            futures::StreamExt::for_each(
+                kube_runtime::WatchStreamExt::applied_objects(instances_reflector),
+                |_| futures::future::ready(()),
+            )
+            .await
+        }));
 
         let config_controller_context = Arc::new(
             util::discovery_configuration_controller::ControllerContext {

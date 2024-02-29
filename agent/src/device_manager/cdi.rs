@@ -10,8 +10,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Device {
     pub name: String,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub annotations: HashMap<String, String>,
     #[serde(default)]
     pub container_edits: ContainerEdit,
 }
@@ -103,14 +101,12 @@ pub struct Hook {
 
 #[derive(Clone, Debug, Deserialize, Serialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[serde(tag = "cdiVersion", rename = "0.6.0")]
+#[serde(tag = "cdiVersion", rename = "0.5.0")]
 pub struct Kind {
     pub kind: String,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub annotations: HashMap<String, String>,
     pub devices: Vec<Device>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub container_edits: Vec<ContainerEdit>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container_edits: Option<ContainerEdit>,
 }
 
 #[cfg(test)]

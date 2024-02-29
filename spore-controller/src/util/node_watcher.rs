@@ -314,6 +314,7 @@ impl NodeWatcher {
             broker_properties: instance.spec.broker_properties.clone(),
             shared: instance.spec.shared,
             device_usage: modified_device_usage,
+            active_claims: instance.spec.active_claims.clone(),
             nodes: modified_nodes,
         };
 

@@ -84,6 +84,12 @@ spec:
             mountPath: /var/lib/akri
           - name: device-plugin
             mountPath: /var/lib/kubelet/device-plugins
+          - name: plugins
+            mountPath: /var/lib/kubelet/plugins
+          - name: plugins-registry
+            mountPath: /var/lib/kubelet/plugins_registry
+          - name: cdi
+            mountPath: /etc/cdi
           - name: pod-resources
             mountPath: /var/lib/kubelet/pod-resources
           - name: var-run-dockershim
@@ -108,6 +114,15 @@ spec:
       - name: device-plugin
         hostPath:
           path: "{{ .Values.agent.host.kubeletDevicePlugins }}"
+      - name: plugins
+        hostPath:
+          path: "{{ .Values.agent.host.kubeletPlugins }}"
+      - name: plugins-registry
+        hostPath:
+          path: "{{ .Values.agent.host.kubeletPluginsRegistry }}"
+      - name: cdi
+        hostPath:
+          path: "{{ .Values.agent.host.cdi }}"
       - name: pod-resources
         hostPath:
           path: "{{ .Values.agent.host.kubeletPodResources }}"

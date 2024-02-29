@@ -18,6 +18,12 @@ use super::KubeImpl;
 pub trait Api<T: Clone + Send + Sync + Resource>: Send + Sync {
     fn as_inner(&self) -> kube::Api<T>;
     async fn apply(&self, obj: T, field_manager: &str) -> Result<T, Error>;
+    async fn raw_patch_status(
+        &self,
+        name: &str,
+        patch: &Patch<Value>,
+        pp: &PatchParams,
+    ) -> Result<T, Error>;
     async fn raw_patch(
         &self,
         name: &str,
@@ -73,7 +79,41 @@ where
         patch: &Patch<Value>,
         pp: &PatchParams,
     ) -> Result<T, Error> {
-        self.patch(name, pp, patch).await
+        let patch = match patch.clone() {
+            Patch::Apply(mut p) => {
+                if let Some(o) = p.as_object_mut() {
+                    o.insert(
+                        "apiVersion".to_string(),
+                        Value::String(T::api_version(&()).to_string()),
+                    );
+                    o.insert("kind".to_string(), Value::String(T::kind(&()).to_string()));
+                }
+                Patch::Apply(p)
+            }
+            o => o,
+        };
+        self.patch(name, pp, &patch).await
+    }
+    async fn raw_patch_status(
+        &self,
+        name: &str,
+        patch: &Patch<Value>,
+        pp: &PatchParams,
+    ) -> Result<T, Error> {
+        let patch = match patch.clone() {
+            Patch::Apply(mut p) => {
+                if let Some(o) = p.as_object_mut() {
+                    o.insert(
+                        "apiVersion".to_string(),
+                        Value::String(T::api_version(&()).to_string()),
+                    );
+                    o.insert("kind".to_string(), Value::String(T::kind(&()).to_string()));
+                }
+                Patch::Apply(p)
+            }
+            o => o,
+        };
+        self.patch_status(name, pp, &patch).await
     }
     async fn delete(&self, name: &str) -> Result<Either<T, Status>, Error> {
         self.delete(name, &Default::default()).await

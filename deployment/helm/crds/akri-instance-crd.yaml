@@ -12,7 +12,7 @@ spec:
     shortNames:
       - akrii
     singular: instance
-  scope: Namespaced
+  scope: Cluster
   versions:
     - additionalPrinterColumns:
         - description: The Configuration this Instance belongs to
@@ -38,6 +38,12 @@ spec:
             spec:
               description: "Defines the information in the Instance CRD\n\nAn Instance is a specific instance described by a Configuration.  For example, a Configuration may describe many cameras, each camera will be represented by a Instance."
               properties:
+                activeClaims:
+                  default: []
+                  items:
+                    type: string
+                  type: array
+                  x-kubernetes-list-type: set
                 brokerProperties:
                   additionalProperties:
                     type: string

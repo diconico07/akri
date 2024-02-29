@@ -38,9 +38,9 @@ spec:
         {{- with .Values.sporeController.image.pullPolicy }}
         imagePullPolicy: {{ . }}
         {{- end }}
-        {{- if .Values.controller.securityContext }}
+        {{- if .Values.sporeController.securityContext }}
         securityContext:
-        {{- toYaml .Values.controller.securityContext | nindent 10 }}
+        {{- toYaml .Values.sporeController.securityContext | nindent 10 }}
         {{- end}}
         resources:
           requests:

@@ -3,6 +3,7 @@
 !Cargo.lock
 !agent
 !spore-controller
+!driver-controller
 !discovery-handler-modules
 !discovery-handlers
 !discovery-utils

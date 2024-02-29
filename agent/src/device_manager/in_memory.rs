@@ -24,12 +24,6 @@ impl DeviceManager for InMemoryManager {
         let cdi_kind = state.get(kind)?;
         let mut device = cdi_kind.devices.iter().find(|dev| dev.name == id)?.clone();
         device.name = format!("{}-{}", kind, id);
-        device.annotations.extend(
-            cdi_kind
-                .annotations
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone())),
-        );
         for edit in cdi_kind.container_edits.iter().cloned() {
             device.container_edits.env.extend(edit.env);
             device
@@ -42,7 +36,7 @@ impl DeviceManager for InMemoryManager {
         Some(device)
     }
 
-    fn has_device(&self, fqdn: String) -> bool {
+    fn has_device(&self, fqdn: &str) -> bool {
         let (kind, id) = fqdn.split_once('=').unwrap();
         if let Some(k) = self.state.borrow().get(kind) {
             return k.devices.iter().any(|dev| dev.name == id);
@@ -60,17 +54,15 @@ mod tests {
         let (sender, rec) = watch::channel(Default::default());
         let manager = InMemoryManager::new(rec);
 
-        assert!(!manager.has_device("akri.sh/any=device".to_string()));
+        assert!(!manager.has_device("akri.sh/any=device"));
         assert_eq!(manager.get("akri.sh/any=device"), None);
 
         let _ = sender.send(HashMap::from([(
             "akri.sh/device".to_string(),
             cdi::Kind {
                 kind: "akri.sh/device".to_string(),
-                annotations: HashMap::from([("config_level".to_owned(), "foo".to_owned())]),
                 devices: vec![cdi::Device {
                     name: "my-device".to_string(),
-                    annotations: HashMap::from([("device_level".to_owned(), "bar".to_owned())]),
                     container_edits: cdi::ContainerEdit {
                         env: vec!["back=home".to_string()],
                         device_nodes: vec![cdi::DeviceNode {
@@ -92,7 +84,7 @@ mod tests {
                         }],
                     },
                 }],
-                container_edits: vec![cdi::ContainerEdit {
+                container_edits: Some(cdi::ContainerEdit {
                     env: vec!["hello=world".to_string()],
                     device_nodes: vec![cdi::DeviceNode {
                         path: "/conf/level/path".to_string(),
@@ -111,16 +103,12 @@ mod tests {
                         env: vec![],
                         timeout: None,
                     }],
-                }],
+                }),
             },
         )]));
 
         let expected_device = cdi::Device {
             name: "akri.sh/device-my-device".to_string(),
-            annotations: HashMap::from([
-                ("device_level".to_owned(), "bar".to_owned()),
-                ("config_level".to_owned(), "foo".to_owned()),
-            ]),
             container_edits: cdi::ContainerEdit {
                 env: vec!["back=home".to_string(), "hello=world".to_string()],
                 device_nodes: vec![
@@ -166,7 +154,7 @@ mod tests {
             },
         };
 
-        assert!(manager.has_device("akri.sh/device=my-device".to_string()));
+        assert!(manager.has_device("akri.sh/device=my-device"));
         assert_eq!(
             manager.get("akri.sh/device=my-device"),
             Some(expected_device)
