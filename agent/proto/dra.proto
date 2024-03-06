@@ -73,7 +73,7 @@ message NodeUnprepareResourcesResponse {
 
 message NodeUnprepareResourceResponse {
     // If non-empty, unpreparing the ResourceClaim failed.
-    string error = 1;
+    optional string error = 1;
 }
 
 message Claim {

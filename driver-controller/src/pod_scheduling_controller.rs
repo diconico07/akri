@@ -192,7 +192,7 @@ async fn reconcile(obj: Arc<PodSchedulingContext>, ctx: Arc<PscCtx>) -> Result<A
                     Some(f) => f.matches(i),
                     None => true,
                 })
-                .filter(|i| i.spec.capacity > i.spec.device_usage.len())
+                .filter(|i| i.spec.capacity > i.spec.active_claims.len())
                 .cloned()
                 .collect();
             (claim, instances)
@@ -232,15 +232,15 @@ async fn reconcile(obj: Arc<PodSchedulingContext>, ctx: Arc<PscCtx>) -> Result<A
                 let best_instance = suitable_instances
                     .fold(None, |best: Option<Arc<Instance>>, instance| {
                         if let Some(best) = best {
-                            if (instance.spec.capacity - instance.spec.device_usage.len())
-                                > (best.spec.capacity - best.spec.device_usage.len())
+                            if (instance.spec.capacity - instance.spec.active_claims.len())
+                                > (best.spec.capacity - best.spec.active_claims.len())
                             {
                                 Some(instance)
                             } else {
                                 Some(best)
                             }
                         } else {
-                            if (instance.spec.capacity - instance.spec.device_usage.len()) > 0 {
+                            if (instance.spec.capacity - instance.spec.active_claims.len()) > 0 {
                                 Some(instance)
                             } else {
                                 None

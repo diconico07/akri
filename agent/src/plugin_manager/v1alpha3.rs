@@ -52,8 +52,8 @@ pub struct NodeUnprepareResourcesResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NodeUnprepareResourceResponse {
     /// If non-empty, unpreparing the ResourceClaim failed.
-    #[prost(string, tag = "1")]
-    pub error: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "1")]
+    pub error: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

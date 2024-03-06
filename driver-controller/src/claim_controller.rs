@@ -161,40 +161,19 @@ async fn reconcile(claim: Arc<ResourceClaim>, ctx: Arc<RcCtx>) -> Result<Action,
         .filter(|instance| filter.matches(&instance))
         .fold(None, |best: Option<Arc<Instance>>, instance| {
             if let Some(best) = best {
-                if (instance.spec.capacity - instance.spec.device_usage.len())
-                    > (best.spec.capacity - best.spec.device_usage.len())
+                if (instance.spec.capacity - instance.spec.active_claims.len())
+                    > (best.spec.capacity - best.spec.active_claims.len())
                 {
                     Some(instance)
                 } else {
                     Some(best)
                 }
             } else {
-                if (instance.spec.capacity - instance.spec.device_usage.len()) > 0 {
+                if (instance.spec.capacity - instance.spec.active_claims.len()) > 0 {
                     Some(instance)
                 } else {
                     None
                 }
-            }
-        })
-        .ok_or(Error::NoMatchingInstance)?;
-
-    let mut best_len = best_instance.spec.capacity;
-    let best_node = best_instance
-        .spec
-        .nodes
-        .iter()
-        .reduce(|node, best| {
-            let node_len = best_instance
-                .spec
-                .device_usage
-                .iter()
-                .filter(|(_, val)| val == &node)
-                .count();
-            if node_len < best_len {
-                best_len = node_len;
-                node
-            } else {
-                best
             }
         })
         .ok_or(Error::NoMatchingInstance)?;
@@ -204,7 +183,7 @@ async fn reconcile(claim: Arc<ResourceClaim>, ctx: Arc<RcCtx>) -> Result<Action,
             node_selector_terms: vec![NodeSelectorTerm {
                 match_fields: Some(vec![NodeSelectorRequirement {
                     key: "metadata.name".to_string(),
-                    values: Some(vec![best_node.clone()]),
+                    values: Some(best_instance.spec.nodes.clone()),
                     operator: "In".to_string(),
                 }]),
                 match_expressions: None,

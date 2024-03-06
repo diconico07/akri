@@ -181,7 +181,7 @@ impl Node for DraPlugin {
                 (
                     c.uid,
                     NodeUnprepareResourceResponse {
-                        error: Default::default(),
+                        error: Some(Default::default()),
                     },
                 )
             })

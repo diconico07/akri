@@ -12,7 +12,7 @@ fn main() {
         .build_client(false)
         .out_dir("./src/plugin_manager")
         .compile(
-            &["./proto/pluginregistration.proto", "./proto/dra.proto"],
+            &["./proto/pluginregistration.proto"/* Disable dra building for some override, "./proto/dra.proto"*/],
             &["./proto"],
         )
         .expect("failed to compile protos");
