@@ -11,7 +11,7 @@ use kube_runtime::{
     watcher, Controller, WatchStreamExt,
 };
 use serde::de::DeserializeOwned;
-use tokio::task::JoinHandle;
+use tokio::{sync::mpsc, task::JoinHandle};
 
 mod claim_controller;
 mod common;
@@ -44,12 +44,15 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let claim_controller = Controller::new(client.all().as_inner(), watcher::Config::default());
     let claims = claim_controller.store();
+    let (release_trigger_sender, release_trigger) = mpsc::channel(1);
+    let trigger_stream = tokio_stream::wrappers::ReceiverStream::new(release_trigger);
     let claim_task = tokio::spawn(claim_controller::start_controller(
         claim_controller,
         client.clone(),
         classes.clone(),
         filters.clone(),
         instances.clone(),
+        release_trigger_sender,
     ));
     let psc_task = tokio::spawn(pod_scheduling_controller::start_controller(
         client.clone(),
@@ -57,6 +60,7 @@ async fn main() -> Result<(), anyhow::Error> {
         filters.clone(),
         instances.clone(),
         claims,
+        trigger_stream,
     ));
     join_all([
         classes_task,

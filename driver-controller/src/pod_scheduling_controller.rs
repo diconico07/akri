@@ -9,6 +9,7 @@ use akri_shared::{
     k8s::crud::{Api, IntoApi},
 };
 use futures::StreamExt;
+use tokio_stream::wrappers::ReceiverStream;
 use k8s_openapi::{
     api::{
         core::v1::{
@@ -74,6 +75,7 @@ pub async fn start_controller(
     filters: Store<InstanceFilter>,
     instances: Store<Instance>,
     claims: Store<ResourceClaim>,
+    trigger: ReceiverStream<()>,
 ) {
     let context = Arc::new(PscCtx {
         classes,
@@ -83,6 +85,7 @@ pub async fn start_controller(
         client: client.clone(),
     });
     Controller::new(client.all().as_inner(), Config::default())
+        .reconcile_all_on(trigger)
         .run(reconcile, error_policy, context)
         .for_each(|_| async {})
         .await;

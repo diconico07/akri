@@ -21,6 +21,7 @@ use kube_runtime::{
 use log::{debug, trace};
 use serde_json::json;
 use thiserror;
+use tokio::sync::mpsc::Sender;
 
 use crate::common::ClaimHandle;
 
@@ -46,6 +47,7 @@ struct RcCtx {
     filters: Store<InstanceFilter>,
     instances: Store<Instance>,
     client: Arc<dyn ClaimDriverClient>,
+    release_trigger: Sender<()>,
 }
 
 pub async fn start_controller(
@@ -54,12 +56,14 @@ pub async fn start_controller(
     classes: Store<ResourceClass>,
     filters: Store<InstanceFilter>,
     instances: Store<Instance>,
+    release_trigger: Sender<()>,
 ) {
     let context = Arc::new(RcCtx {
         classes,
         filters,
         instances,
         client: client.clone(),
+        release_trigger,
     });
     controller
         .run(reconcile, error_policy, context)
@@ -119,6 +123,7 @@ async fn reconcile(claim: Arc<ResourceClaim>, ctx: Arc<RcCtx>) -> Result<Action,
                 .namespaced(&claim.namespace().unwrap_or_default());
             api.remove_finalizer(claim.deref(), "akri.sh/driver-controller")
                 .await?;
+            let _ = ctx.release_trigger.try_send(());
         }
     }
 
